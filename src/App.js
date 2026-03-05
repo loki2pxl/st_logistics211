@@ -2,25 +2,931 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // =============================================================================
-// SUPABASE CONFIGURATION
+// SUPABASE CONFIGURATION - Using Environment Variables
 // =============================================================================
-// Để sử dụng, bạn cần:
-// 1. Tạo tài khoản miễn phí tại https://supabase.com
-// 2. Tạo project mới
-// 3. Lấy SUPABASE_URL và SUPABASE_ANON_KEY từ Settings > API
-// 4. Thay thế vào 2 dòng dưới đây
+// HƯỚNG DẪN:
+// 1. Tạo file .env trong thư mục root project (cùng cấp package.json)
+// 2. Copy nội dung từ .env.example
+// 3. Điền SUPABASE_URL và SUPABASE_ANON_KEY thật vào
+// 4. File .env sẽ KHÔNG được upload lên GitHub (đã có trong .gitignore)
 
-const SUPABASE_URL = 'https://acpirnlpxzdxdbutcqyr.supabase.co'; // VD: https://xxxxx.supabase.co
-const SUPABASE_ANON_KEY = 'sb_secret_-_fCQv_qF_JqWuM3PSp6ow_rkLd8BoB';
+// Đọc từ environment variables
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
+
+// Kiểm tra xem đã config chưa
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('⚠️ CẢNH BÁO: Chưa cấu hình Supabase!');
+  console.error('Hãy tạo file .env và thêm:');
+  console.error('REACT_APP_SUPABASE_URL=your-url');
+  console.error('REACT_APP_SUPABASE_ANON_KEY=your-key');
+}
 
 // Khởi tạo Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // =============================================================================
+// LOGIN COMPONENT
+// =============================================================================
+function LoginPage({ onLogin }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      // Query user from database
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password) // Note: In production, use hashed passwords!
+        .single();
+
+      if (error || !data) {
+        setError('Tên đăng nhập hoặc mật khẩu không đúng!');
+        setLoading(false);
+        return;
+      }
+
+      // Login successful
+      onLogin(data);
+    } catch (err) {
+      setError('Có lỗi xảy ra. Vui lòng thử lại!');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={loginStyles.container}>
+      <div style={loginStyles.card}>
+        <div style={loginStyles.logo}>
+          <span style={{ fontSize: '4rem' }}>🚛</span>
+          <h1 style={loginStyles.title}>LOGISTICS HUB</h1>
+          <p style={loginStyles.subtitle}>Hệ thống quản lý thông minh</p>
+        </div>
+
+        <form onSubmit={handleLogin} style={loginStyles.form}>
+          {error && (
+            <div style={loginStyles.error}>
+              ⚠️ {error}
+            </div>
+          )}
+
+          <div style={loginStyles.formGroup}>
+            <label style={loginStyles.label}>Tên đăng nhập</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              style={loginStyles.input}
+              placeholder="Nhập tên đăng nhập"
+              required
+            />
+          </div>
+
+          <div style={loginStyles.formGroup}>
+            <label style={loginStyles.label}>Mật khẩu</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={loginStyles.input}
+              placeholder="Nhập mật khẩu"
+              required
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            style={loginStyles.button}
+            disabled={loading}
+          >
+            {loading ? 'Đang đăng nhập...' : 'Đăng Nhập'}
+          </button>
+
+          <div style={loginStyles.hint}>
+            <strong>Demo accounts:</strong><br/>
+            Admin: admin / admin123<br/>
+            Bốc xếp: bocxep1 / 123456<br/>
+            Lái xe: laixe1 / 123456<br/>
+            Văn phòng: vanphong1 / 123456
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const loginStyles = {
+  container: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%)',
+    padding: '2rem',
+  },
+  card: {
+    background: 'white',
+    borderRadius: '2rem',
+    padding: '3rem',
+    maxWidth: '450px',
+    width: '100%',
+    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+  },
+  logo: {
+    textAlign: 'center',
+    marginBottom: '2rem',
+  },
+  title: {
+    fontFamily: 'Bebas Neue, sans-serif',
+    fontSize: '2.5rem',
+    marginTop: '1rem',
+    marginBottom: '0.5rem',
+    background: 'linear-gradient(135deg, #1e3c72 0%, #7e22ce 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+  },
+  subtitle: {
+    color: '#64748b',
+    fontSize: '1rem',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+  },
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  label: {
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    color: '#0f172a',
+  },
+  input: {
+    padding: '1rem',
+    border: '2px solid #e2e8f0',
+    borderRadius: '0.75rem',
+    fontSize: '1rem',
+    fontFamily: 'Outfit, sans-serif',
+    transition: 'all 0.3s ease',
+  },
+  button: {
+    padding: '1rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.75rem',
+    fontSize: '1.1rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'Outfit, sans-serif',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)',
+  },
+  error: {
+    padding: '1rem',
+    background: 'rgba(239, 68, 68, 0.1)',
+    color: '#ef4444',
+    borderRadius: '0.75rem',
+    fontSize: '0.95rem',
+    fontWeight: 600,
+  },
+  hint: {
+    padding: '1rem',
+    background: '#f8fafc',
+    borderRadius: '0.75rem',
+    fontSize: '0.85rem',
+    color: '#64748b',
+    lineHeight: 1.6,
+  },
+};
+
+
+// =============================================================================
+// EMPLOYEE PORTAL (for non-admin users)
+// =============================================================================
+function EmployeePortal({ user, onLogout }) {
+  const [activeTab, setActiveTab] = useState('checkin');
+  const [myData, setMyData] = useState({
+    attendance: [],
+    expenses: [],
+    shipments: [],
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadMyData();
+  }, []);
+
+  const loadMyData = async () => {
+    setLoading(true);
+    try {
+      // Load attendance for this employee
+      const { data: attendanceData } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('employee_id', user.employee_id)
+        .order('date', { ascending: false })
+        .limit(10);
+
+      // Load expenses created by this user (for drivers & warehouse)
+      const { data: expensesData } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('paid_by', user.name)
+        .order('date', { ascending: false })
+        .limit(10);
+
+      // Load shipments (for drivers)
+      const { data: shipmentsData } = await supabase
+        .from('shipments')
+        .select('*')
+        .eq('branch', user.branch)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setMyData({
+        attendance: attendanceData || [],
+        expenses: expensesData || [],
+        shipments: shipmentsData || [],
+      });
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check in/out
+  const handleCheckIn = async () => {
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5);
+    const currentDate = now.toISOString().split('T')[0];
+
+    const { error } = await supabase.from('attendance').insert([{
+      employee_id: user.employee_id,
+      employee_name: user.name,
+      group: user.role,
+      branch: user.branch,
+      date: currentDate,
+      check_in: currentTime,
+    }]);
+
+    if (!error) {
+      alert('✅ Check-in thành công lúc ' + currentTime);
+      loadMyData();
+    } else {
+      alert('❌ Lỗi: ' + error.message);
+    }
+  };
+
+  const handleCheckOut = async (attendanceId) => {
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5);
+
+    const { error } = await supabase
+      .from('attendance')
+      .update({ check_out: currentTime })
+      .eq('id', attendanceId);
+
+    if (!error) {
+      alert('✅ Check-out thành công lúc ' + currentTime);
+      loadMyData();
+    } else {
+      alert('❌ Lỗi: ' + error.message);
+    }
+  };
+
+  // Add expense (for drivers & warehouse staff)
+  const handleAddExpense = async (formData) => {
+    const { error } = await supabase.from('expenses').insert([{
+      ...formData,
+      branch: user.branch,
+      paid_by: user.name,
+    }]);
+
+    if (!error) {
+      alert('✅ Đã ghi nhận chi phí!');
+      loadMyData();
+    } else {
+      alert('❌ Lỗi: ' + error.message);
+    }
+  };
+
+  // Update shipment status (for drivers)
+  const handleUpdateShipment = async (shipmentId, newStatus) => {
+    const { error } = await supabase
+      .from('shipments')
+      .update({ status: newStatus })
+      .eq('id', shipmentId);
+
+    if (!error) {
+      alert('✅ Đã cập nhật trạng thái!');
+      loadMyData();
+    } else {
+      alert('❌ Lỗi: ' + error.message);
+    }
+  };
+
+  return (
+    <div style={styles.app}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Bebas+Neue&display=swap');
+        
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Outfit', sans-serif;
+          background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+          min-height: 100vh;
+        }
+      `}</style>
+
+      {/* Header */}
+      <header style={employeeStyles.header}>
+        <div>
+          <h1 style={employeeStyles.title}>👋 Xin chào, {user.name}!</h1>
+          <p style={employeeStyles.subtitle}>
+            {getRoleLabel(user.role)} - Chi nhánh {user.branch === 'hanoi' ? 'Hà Nội' : 'Sài Gòn'}
+          </p>
+        </div>
+        <button onClick={onLogout} style={employeeStyles.logoutBtn}>
+          🚪 Đăng xuất
+        </button>
+      </header>
+
+      {/* Quick Stats */}
+      <div style={employeeStyles.statsGrid}>
+        <div style={employeeStyles.statCard}>
+          <div style={{ fontSize: '2rem' }}>📅</div>
+          <div style={employeeStyles.statValue}>{myData.attendance.length}</div>
+          <div style={employeeStyles.statLabel}>Ngày chấm công</div>
+        </div>
+        {(user.role === 'lai-xe' || user.role === 'boc-xep') && (
+          <div style={employeeStyles.statCard}>
+            <div style={{ fontSize: '2rem' }}>💰</div>
+            <div style={employeeStyles.statValue}>{myData.expenses.length}</div>
+            <div style={employeeStyles.statLabel}>Chi phí đã ghi</div>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation Tabs */}
+      <div style={employeeStyles.tabs}>
+        <button
+          style={{
+            ...employeeStyles.tab,
+            ...(activeTab === 'checkin' ? employeeStyles.tabActive : {})
+          }}
+          onClick={() => setActiveTab('checkin')}
+        >
+          ⏰ Chấm Công
+        </button>
+        
+        {(user.role === 'lai-xe' || user.role === 'boc-xep') && (
+          <button
+            style={{
+              ...employeeStyles.tab,
+              ...(activeTab === 'expense' ? employeeStyles.tabActive : {})
+            }}
+            onClick={() => setActiveTab('expense')}
+          >
+            💰 Ghi Chi Phí
+          </button>
+        )}
+        
+        {user.role === 'lai-xe' && (
+          <button
+            style={{
+              ...employeeStyles.tab,
+              ...(activeTab === 'shipment' ? employeeStyles.tabActive : {})
+            }}
+            onClick={() => setActiveTab('shipment')}
+          >
+            🚚 Cập Nhật Đơn Hàng
+          </button>
+        )}
+      </div>
+
+      {/* Content Area */}
+      <div style={employeeStyles.content}>
+        {/* Check-in Tab */}
+        {activeTab === 'checkin' && (
+          <CheckInTab
+            attendance={myData.attendance}
+            onCheckIn={handleCheckIn}
+            onCheckOut={handleCheckOut}
+          />
+        )}
+
+        {/* Expense Tab */}
+        {activeTab === 'expense' && (user.role === 'lai-xe' || user.role === 'boc-xep') && (
+          <ExpenseTab
+            expenses={myData.expenses}
+            onAddExpense={handleAddExpense}
+            userRole={user.role}
+          />
+        )}
+
+        {/* Shipment Tab (Drivers only) */}
+        {activeTab === 'shipment' && user.role === 'lai-xe' && (
+          <ShipmentTab
+            shipments={myData.shipments}
+            onUpdateStatus={handleUpdateShipment}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Check-in Component
+function CheckInTab({ attendance, onCheckIn, onCheckOut }) {
+  const today = new Date().toISOString().split('T')[0];
+  const todayAttendance = attendance.find(a => a.date === today);
+
+  return (
+    <div style={employeeStyles.section}>
+      <h2 style={employeeStyles.sectionTitle}>Chấm Công Hôm Nay</h2>
+      
+      <div style={employeeStyles.checkInCard}>
+        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⏰</div>
+        <div style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem' }}>
+          {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+        </div>
+        <div style={{ fontSize: '1rem', color: '#64748b', marginBottom: '2rem' }}>
+          {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+        </div>
+
+        {!todayAttendance ? (
+          <button onClick={onCheckIn} style={employeeStyles.checkInBtn}>
+            ✅ Check In Ngay
+          </button>
+        ) : !todayAttendance.check_out ? (
+          <div>
+            <div style={{ marginBottom: '1rem', color: '#10b981', fontWeight: 600 }}>
+              ✅ Đã check-in lúc {todayAttendance.check_in}
+            </div>
+            <button 
+              onClick={() => onCheckOut(todayAttendance.id)} 
+              style={employeeStyles.checkOutBtn}
+            >
+              🏁 Check Out
+            </button>
+          </div>
+        ) : (
+          <div style={{ color: '#3b82f6', fontWeight: 600 }}>
+            ✅ Hoàn thành: {todayAttendance.check_in} - {todayAttendance.check_out}
+          </div>
+        )}
+      </div>
+
+      {/* History */}
+      <h3 style={{ ...employeeStyles.sectionTitle, marginTop: '2rem' }}>Lịch Sử Chấm Công</h3>
+      <div style={employeeStyles.tableWrapper}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Ngày</th>
+              <th style={styles.th}>Check In</th>
+              <th style={styles.th}>Check Out</th>
+              <th style={styles.th}>Tổng Giờ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendance.slice(0, 7).map(item => (
+              <tr key={item.id} style={styles.tr}>
+                <td style={styles.td}>{formatDate(item.date)}</td>
+                <td style={styles.td}>{item.check_in}</td>
+                <td style={styles.td}>{item.check_out || '-'}</td>
+                <td style={styles.td}>{calculateHours(item.check_in, item.check_out)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Expense Tab Component
+function ExpenseTab({ expenses, onAddExpense, userRole }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    type: userRole === 'lai-xe' ? 'fuel' : 'warehouse',
+    amount: '',
+    description: '',
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onAddExpense(form);
+    setForm({
+      date: new Date().toISOString().split('T')[0],
+      type: userRole === 'lai-xe' ? 'fuel' : 'warehouse',
+      amount: '',
+      description: '',
+    });
+    setShowForm(false);
+  };
+
+  return (
+    <div style={employeeStyles.section}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h2 style={employeeStyles.sectionTitle}>Ghi Nhận Chi Phí</h2>
+        <button onClick={() => setShowForm(!showForm)} style={styles.btnPrimary}>
+          {showForm ? '❌ Hủy' : '➕ Thêm Chi Phí'}
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} style={employeeStyles.form}>
+          <div style={styles.formGrid}>
+            <FormField label="Ngày">
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                style={styles.input}
+                required
+              />
+            </FormField>
+
+            <FormField label="Loại chi phí">
+              <select
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                style={styles.input}
+                required
+              >
+                {userRole === 'lai-xe' && <option value="fuel">Xăng dầu</option>}
+                {userRole === 'boc-xep' && <option value="warehouse">Kho bãi</option>}
+              </select>
+            </FormField>
+
+            <FormField label="Số tiền (VNĐ)">
+              <input
+                type="number"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                style={styles.input}
+                min="0"
+                required
+              />
+            </FormField>
+
+            <FormField label="Mô tả">
+              <input
+                type="text"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                style={styles.input}
+                placeholder="VD: Đổ xăng xe VN-29A"
+                required
+              />
+            </FormField>
+          </div>
+          <button type="submit" style={{ ...styles.btnPrimary, marginTop: '1rem' }}>
+            💾 Lưu Chi Phí
+          </button>
+        </form>
+      )}
+
+      {/* History */}
+      <h3 style={{ ...employeeStyles.sectionTitle, marginTop: '2rem' }}>Chi Phí Đã Ghi</h3>
+      <div style={employeeStyles.tableWrapper}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Ngày</th>
+              <th style={styles.th}>Loại</th>
+              <th style={styles.th}>Mô Tả</th>
+              <th style={styles.th}>Số Tiền</th>
+            </tr>
+          </thead>
+          <tbody>
+            {expenses.map(item => (
+              <tr key={item.id} style={styles.tr}>
+                <td style={styles.td}>{formatDate(item.date)}</td>
+                <td style={styles.td}>
+                  <span style={item.type === 'fuel' ? styles.badgeInfo : styles.badgeWarning}>
+                    {item.type === 'fuel' ? 'Xăng dầu' : 'Kho bãi'}
+                  </span>
+                </td>
+                <td style={styles.td}>{item.description}</td>
+                <td style={styles.td}><strong>₫{parseInt(item.amount).toLocaleString()}</strong></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Shipment Tab (Drivers only)
+function ShipmentTab({ shipments, onUpdateStatus }) {
+  return (
+    <div style={employeeStyles.section}>
+      <h2 style={employeeStyles.sectionTitle}>Đơn Hàng Cần Vận Chuyển</h2>
+      
+      <div style={employeeStyles.tableWrapper}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Mã Đơn</th>
+              <th style={styles.th}>Khách Hàng</th>
+              <th style={styles.th}>Ngày</th>
+              <th style={styles.th}>Trạng Thái</th>
+              <th style={styles.th}>Hành Động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shipments.map(item => (
+              <tr key={item.id} style={styles.tr}>
+                <td style={styles.td}><strong>{item.order_code}</strong></td>
+                <td style={styles.td}>{item.customer}</td>
+                <td style={styles.td}>{formatDate(item.date)}</td>
+                <td style={styles.td}>
+                  <span style={getStatusBadge(item.status)}>
+                    {getStatusLabel(item.status)}
+                  </span>
+                </td>
+                <td style={styles.td}>
+                  {item.status === 'pending' && (
+                    <button 
+                      onClick={() => onUpdateStatus(item.id, 'shipping')}
+                      style={employeeStyles.actionBtn}
+                    >
+                      🚚 Bắt đầu vận chuyển
+                    </button>
+                  )}
+                  {item.status === 'shipping' && (
+                    <button 
+                      onClick={() => onUpdateStatus(item.id, 'delivered')}
+                      style={employeeStyles.actionBtn}
+                    >
+                      ✅ Đã giao hàng
+                    </button>
+                  )}
+                  {item.status === 'delivered' && (
+                    <span style={{ color: '#10b981', fontWeight: 600 }}>✅ Hoàn thành</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const employeeStyles = {
+  header: {
+    background: 'white',
+    padding: '2rem',
+    borderRadius: '1.5rem',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+    margin: '2rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: '2rem',
+    fontWeight: 800,
+    color: '#0f172a',
+    fontFamily: 'Bebas Neue, sans-serif',
+  },
+  subtitle: {
+    fontSize: '1rem',
+    color: '#64748b',
+    marginTop: '0.25rem',
+  },
+  logoutBtn: {
+    padding: '0.875rem 1.75rem',
+    background: '#ef4444',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.75rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'Outfit, sans-serif',
+  },
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '1.5rem',
+    margin: '0 2rem 2rem',
+  },
+  statCard: {
+    background: 'white',
+    padding: '2rem',
+    borderRadius: '1.5rem',
+    textAlign: 'center',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+  },
+  statValue: {
+    fontSize: '2.5rem',
+    fontWeight: 800,
+    color: '#0f172a',
+    fontFamily: 'Bebas Neue, sans-serif',
+  },
+  statLabel: {
+    fontSize: '0.875rem',
+    color: '#64748b',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  tabs: {
+    display: 'flex',
+    gap: '1rem',
+    margin: '0 2rem 2rem',
+    flexWrap: 'wrap',
+  },
+  tab: {
+    padding: '1rem 2rem',
+    background: 'white',
+    border: '2px solid #e2e8f0',
+    borderRadius: '0.75rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'Outfit, sans-serif',
+    transition: 'all 0.3s ease',
+    fontSize: '1rem',
+  },
+  tabActive: {
+    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+    color: 'white',
+    borderColor: 'transparent',
+    boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)',
+  },
+  content: {
+    margin: '0 2rem 2rem',
+  },
+  section: {
+    background: 'white',
+    padding: '2rem',
+    borderRadius: '1.5rem',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+  },
+  sectionTitle: {
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    color: '#0f172a',
+    marginBottom: '1.5rem',
+  },
+  checkInCard: {
+    textAlign: 'center',
+    padding: '3rem',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)',
+    borderRadius: '1.5rem',
+    marginBottom: '2rem',
+  },
+  checkInBtn: {
+    padding: '1.25rem 3rem',
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.75rem',
+    fontSize: '1.25rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'Outfit, sans-serif',
+    boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',
+  },
+  checkOutBtn: {
+    padding: '1.25rem 3rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.75rem',
+    fontSize: '1.25rem',
+    fontWeight: '700',
+    cursor: 'pointer',
+    fontFamily: 'Outfit, sans-serif',
+    boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)',
+  },
+  tableWrapper: {
+    overflowX: 'auto',
+    borderRadius: '1rem',
+    border: '1px solid #e2e8f0',
+  },
+  form: {
+    background: '#f8fafc',
+    padding: '2rem',
+    borderRadius: '1rem',
+    marginBottom: '2rem',
+  },
+  actionBtn: {
+    padding: '0.625rem 1.25rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.5rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    fontFamily: 'Outfit, sans-serif',
+  },
+};
+
+function getRoleLabel(role) {
+  const labels = {
+    'boc-xep': 'Nhân viên bốc xếp',
+    'lai-xe': 'Lái xe',
+    'van-phong': 'Nhân viên văn phòng',
+    'khac': 'Nhân viên khác',
+  };
+  return labels[role] || role;
+}
+
+function getStatusLabel(status) {
+  const labels = {
+    pending: 'Chờ xử lý',
+    shipping: 'Đang vận chuyển',
+    delivered: 'Đã giao',
+  };
+  return labels[status] || status;
+}
+
+// =============================================================================
 // MAIN APP COMPONENT
 // =============================================================================
 export default function LogisticsApp() {
-  const [currentBranch, setCurrentBranch] = useState('hanoi');
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if user is already logged in (from localStorage)
+    const savedUser = localStorage.getItem('logistics_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setIsLoading(false);
+  }, []);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem('logistics_user', JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('logistics_user');
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%)',
+        color: 'white',
+        fontSize: '1.5rem',
+        fontWeight: 700,
+      }}>
+        Đang tải...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  // Admin gets full dashboard, employees get portal
+  if (user.role === 'admin') {
+    return <AdminDashboard user={user} onLogout={handleLogout} />;
+  } else {
+    return <EmployeePortal user={user} onLogout={handleLogout} />;
+  }
+}
+
+// =============================================================================
+// ADMIN DASHBOARD (Original Dashboard)
+// =============================================================================
+function AdminDashboard({ user, onLogout }) {
+  const [currentBranch, setCurrentBranch] = useState(user.branch || 'hanoi');
   const [activeSection, setActiveSection] = useState('overview');
   const [loading, setLoading] = useState(false);
 
@@ -175,7 +1081,7 @@ export default function LogisticsApp() {
   };
 
   const deleteRecord = async (table, id) => {
-    if (!window.confirm('Bạn có chắc muốn xóa?')) return;
+    if (!confirm('Bạn có chắc muốn xóa?')) return;
     
     const { error } = await supabase.from(table).delete().eq('id', id);
     
@@ -353,25 +1259,30 @@ export default function LogisticsApp() {
         <header style={styles.header} className="fade-in">
           <div>
             <h1 style={styles.headerTitle}>Dashboard Quản Lý</h1>
-            <p style={styles.headerSubtitle}>Hệ thống logistics thông minh</p>
+            <p style={styles.headerSubtitle}>Xin chào, {user.name} 👋</p>
           </div>
           
-          <div style={styles.branchSelector}>
-            {[
-              { id: 'hanoi', label: '📍 Hà Nội' },
-              { id: 'saigon', label: '📍 Sài Gòn' }
-            ].map(branch => (
-              <button
-                key={branch.id}
-                style={{
-                  ...styles.branchBtn,
-                  ...(currentBranch === branch.id ? styles.branchBtnActive : {})
-                }}
-                onClick={() => setCurrentBranch(branch.id)}
-              >
-                {branch.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={styles.branchSelector}>
+              {[
+                { id: 'hanoi', label: '📍 Hà Nội' },
+                { id: 'saigon', label: '📍 Sài Gòn' }
+              ].map(branch => (
+                <button
+                  key={branch.id}
+                  style={{
+                    ...styles.branchBtn,
+                    ...(currentBranch === branch.id ? styles.branchBtnActive : {})
+                  }}
+                  onClick={() => setCurrentBranch(branch.id)}
+                >
+                  {branch.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={onLogout} style={employeeStyles.logoutBtn}>
+              🚪 Đăng xuất
+            </button>
           </div>
         </header>
 

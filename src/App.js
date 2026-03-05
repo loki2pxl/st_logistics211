@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // =============================================================================
@@ -34,33 +34,33 @@ function LoginPage({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+const handleLogin = async (e) => {
+  e.preventDefault();
 
-    try {
-      // Query user from database
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .eq('password', password) // Note: In production, use hashed passwords!
-        .single();
+  setError('');
+  setLoading(true);
 
-      if (error || !data) {
-        setError('Tên đăng nhập hoặc mật khẩu không đúng!');
-        setLoading(false);
-        return;
-      }
+  try {
+    const { data, error: queryError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .eq('password', password)
+      .maybeSingle();
 
-      // Login successful
-      onLogin(data);
-    } catch (err) {
-      setError('Có lỗi xảy ra. Vui lòng thử lại!');
-      setLoading(false);
+    if (queryError || !data) {
+      setError('Tên đăng nhập hoặc mật khẩu không đúng!');
+      return;
     }
-  };
+
+    onLogin(data);
+
+  } catch (err) {
+    setError('Có lỗi xảy ra. Vui lòng thử lại!');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div style={loginStyles.container}>
@@ -945,9 +945,15 @@ function AdminDashboard({ user, onLogout }) {
     kpi: false,
   });
 
-  // Form state
-  const [formData, setFormData] = useState({});
+// Form state
+const [formData, setFormData] = useState({});
 
+<input
+  value={formData.name || ""}
+  onChange={(e) =>
+    setFormData({ ...formData, name: e.target.value })
+  }
+/>
   // =============================================================================
   // DATA FETCHING
   // =============================================================================
@@ -955,32 +961,33 @@ function AdminDashboard({ user, onLogout }) {
     loadAllData();
   }, [currentBranch]);
 
-  const loadAllData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        loadAttendance(),
-        loadShipments(),
-        loadExpenses(),
-        loadKPI(),
-        loadEmployees(),
-      ]);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadAllData = useCallback(async () => {
+  setLoading(true);
 
-  const loadAttendance = async () => {
-    const { data, error } = await supabase
-      .from('attendance')
-      .select('*')
-      .eq('branch', currentBranch)
-      .order('date', { ascending: false });
-    
-    if (!error && data) setAttendance(data);
-  };
+  try {
+    await Promise.all([
+      loadAttendance(),
+      loadShipments(),
+      loadExpenses(),
+      loadKPI(),
+      loadEmployees(),
+    ]);
+  } catch (error) {
+    console.error('Error loading data:', error);
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+const loadAttendance = async () => {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('branch', currentBranch)
+    .order('date', { ascending: false });
+
+  if (!error && data) setAttendance(data);
+};
 
   const loadShipments = async () => {
     const { data, error } = await supabase
@@ -1101,7 +1108,7 @@ function AdminDashboard({ user, onLogout }) {
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${currentBranch}/${fileName}`;
 
-    const { data, error } = await supabase.storage
+    const { data: _data, error } = await supabase.storage
       .from(bucket)
       .upload(filePath, file);
 

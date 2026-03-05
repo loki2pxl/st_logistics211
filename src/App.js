@@ -1081,7 +1081,7 @@ function AdminDashboard({ user, onLogout }) {
   };
 
   const deleteRecord = async (table, id) => {
-    if (!confirm('Bạn có chắc muốn xóa?')) return;
+    if (!window.confirm('Bạn có chắc muốn xóa?')) return;
     
     const { error } = await supabase.from(table).delete().eq('id', id);
     

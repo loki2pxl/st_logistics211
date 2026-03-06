@@ -1,176 +1,78 @@
-import React, { useState, useEffect, useCallback } from "react";
-import * as mockService from "../../data/dataService";
-import "../../styles/global.css"; 
+import React, { useState } from "react";
+import "../../styles/global.css";
+
+// Import 3 portals con
+import BocXepPortal from "../portals/bocxep";
+import LaiXePortal from "../portals/laixe";
+import VanPhongPortal from "../portals/vanphong";
 
 export function EmployeePortal({ user, onLogout }) {
-  // 1. Component States
-  const [attendance, setAttendance] = useState([]);
-  const [expenses, setExpenses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('vi-VN'));
-  const [activeGroup, setActiveGroup] = useState(user.role || "Nhóm Khác"); // Default to user's role
+  // Mặc định chọn nhóm theo role của user, nếu không có thì mặc định là 'vanphong'
+  const [activeGroup, setActiveGroup] = useState(user?.role || "vanphong");
 
-  // 2. Real-time Clock for the Check-in Card
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('vi-VN', { hour12: false }));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // 3. Data Loading Logic
-  const loadMyData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const allAttendance = await mockService.getAttendance();
-      const allExpenses = await mockService.getExpenses();
-
-      // Filter data specifically for this employee
-      setAttendance(allAttendance.filter(a => a.employee_id === user.employee_id) || []);
-      setExpenses(allExpenses.filter(e => e.employee_id === user.employee_id) || []);
-    } catch (err) {
-      console.error("Error loading portal data:", err);
-    } finally {
-      setLoading(false);
+  // Logic luân chuyển: Gọi đúng portal dựa theo activeGroup
+  const renderPortal = () => {
+    switch (activeGroup) {
+      case "bocxep":
+        return <BocXepPortal user={user} />;
+      case "laixe":
+        return <LaiXePortal user={user} />;
+      case "vanphong":
+      default:
+        return <VanPhongPortal user={user} />;
     }
-  }, [user.employee_id]);
-
-  useEffect(() => {
-    loadMyData();
-  }, [loadMyData]);
-
-  if (loading) return <div className="loading-screen">Đang tải ứng dụng nhân viên...</div>;
+  };
 
   return (
     <div className="dashboard-container">
-      {/* 1. SIDEBAR - Matching the Image perfectly */}
+      {/* SIDEBAR TẬP TRUNG VÀO CHỌN NHÓM NHÂN VIÊN */}
       <aside className="sidebar">
-        <div className="logo-section">
-          <h2>LOGISTICS HUB</h2>
-        </div>
+        <div className="logo-section"><h2>LOGISTICS HUB</h2></div>
         
         <nav className="nav-menu">
-          <ul>
-            <li className="nav-item active">📊 Tổng Quan</li>
-            <li className="nav-item">⏰ Chấm Công</li>
-            <li className="nav-item">🚛 Tracking Khách Hàng</li>
-            <li className="nav-item">💰 Quản Lý Chi Phí</li>
-            <li className="nav-item">📈 KPI & Lương Thưởng</li>
-          </ul>
-
-          <div className="menu-divider">NHẬP DỮ LIỆU</div>
+          <div className="menu-divider" style={{marginTop: 0}}>CHỌN NHÓM NHẬP LIỆU</div>
           
-          <ul className="group-menu">
-            <li className={`nav-item ${activeGroup === 'driver' ? 'active' : ''}`} onClick={() => setActiveGroup('driver')}>
-              📦 Bốc Xếp
-            </li>
-            <li className={`nav-item ${activeGroup === 'warehouse' ? 'active' : ''}`} onClick={() => setActiveGroup('warehouse')}>
-              🚛 Lái Xe
-            </li>
-            <li className={`nav-item ${activeGroup === 'office' ? 'active' : ''}`} onClick={() => setActiveGroup('office')}>
-              💼 Văn Phòng
-            </li>
-            <li className={`nav-item ${activeGroup === 'admin' ? 'active' : ''}`} onClick={() => setActiveGroup('admin')}>
-              👥 Nhóm Khác
-            </li>
+          <ul className="group-menu" style={{listStyle: 'none'}}>
+            <li 
+              className={`nav-item ${activeGroup === 'bocxep' ? 'active' : ''}`} 
+              onClick={() => setActiveGroup('bocxep')}
+            >📦 Đội Bốc Xếp</li>
+            <li 
+              className={`nav-item ${activeGroup === 'laixe' ? 'active' : ''}`} 
+              onClick={() => setActiveGroup('laixe')}
+            >🚛 Đội Lái Xe</li>
+            <li 
+              className={`nav-item ${activeGroup === 'vanphong' ? 'active' : ''}`} 
+              onClick={() => setActiveGroup('vanphong')}
+            >💼 Khối Văn Phòng</li>
           </ul>
         </nav>
 
         <div className="sidebar-footer">
-          <p className="user-name">{user.name}</p>
-          <button onClick={onLogout} className="logout-link">Đăng xuất</button>
+          <p className="user-name" style={{color: 'white', fontWeight: 'bold'}}>{user?.name || "Tài khoản Nội Bộ"}</p>
+          <button onClick={onLogout} className="btn-primary" style={{marginTop: '10px', width: '100%', background: 'rgba(255,255,255,0.1)'}}>
+            Đăng xuất
+          </button>
         </div>
       </aside>
 
-      {/* 2. MAIN CONTENT */}
+      {/* KHU VỰC HIỂN THỊ PORTAL CON */}
       <main className="main-content">
-        <header className="dashboard-header">
-          <h1>Dashboard Nhân Viên</h1>
+        <header className="dashboard-header" style={{background: 'white', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+          <h1 style={{color: '#7e22ce', margin: 0}}>Cổng Nhập Liệu Nội Bộ</h1>
           <div className="branch-selector">
-             {/* Branch display matching the location toggle style */}
-            <span className={`branch-btn active`}>
-               📍 {user.branch === 'hanoi' ? 'Hà Nội' : 'Sài Gòn'}
+            <span style={{background: '#f1f5f9', padding: '8px 20px', borderRadius: '20px', fontWeight: 'bold'}}>
+               📍 {user?.branch === 'saigon' ? 'Sài Gòn' : 'Hà Nội'}
             </span>
           </div>
         </header>
 
-        <div className="grid-layout">
-          <div className="content-column">
-            
-            {/* Header for Input Section */}
-            <div className="section-header">
-              <h3>👥 Nhập Liệu - {activeGroup === 'admin' ? 'Nhóm Khác' : 'Phòng Ban'}</h3>
-              <div className="employee-select">
-                <span>Nhân viên:</span>
-                <strong>{user.name}</strong>
-              </div>
-            </div>
-
-            {/* ⏰ Quick Check-in Card (Yellow) */}
-            <div className="card yellow-card">
-              <h3>⏰ Chấm Công Nhanh</h3>
-              <div className="checkin-grid">
-                <div className="stat-box">
-                  <span className="label">Thời gian hiện tại</span>
-                  <h2 className="big-time">{currentTime}</h2>
-                  <button className="btn-white">✓ Check In</button>
-                </div>
-                <div className="stat-box">
-                  <span className="label">Trạng thái hôm nay</span>
-                  <h2 className="status-text">Chưa check in</h2>
-                  <button className="btn-disabled" disabled>✗ Check Out</button>
-                </div>
-              </div>
-            </div>
-
-            {/* 📝 Work Reporting Form */}
-            <div className="card work-report-card">
-              <h3>📝 Báo Cáo Công Việc</h3>
-              <form className="report-form">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Loại công việc</label>
-                    <input type="text" placeholder="Nhập loại công việc..." />
-                  </div>
-                  <div className="form-group">
-                    <label>Thời gian thực hiện (giờ)</label>
-                    <input type="number" placeholder="0" />
-                  </div>
-                </div>
-                
-                <div className="form-group">
-                  <label>Mô tả công việc chi tiết</label>
-                  <textarea rows="4" placeholder="Mô tả chi tiết công việc đã thực hiện..."></textarea>
-                </div>
-
-                <div className="upload-area">
-                  <label>Upload tài liệu (nếu có)</label>
-                  <div className="file-dropzone">
-                     <span>📁 Click để chọn file</span>
-                  </div>
-                </div>
-
-                <button type="button" className="btn-primary">💾 Lưu Báo Cáo</button>
-              </form>
-            </div>
-          </div>
-
-          {/* 3. RIGHT COLUMN - SUMMARY STATS */}
-          <div className="stats-column">
-            <div className="card">
-              <h3>Thống Kê Cá Nhân</h3>
-              <div className="stat-item">
-                <span>Số lượt chấm công:</span>
-                <strong>{attendance.length}</strong>
-              </div>
-              <div className="stat-item">
-                <span>Khoản chi phí đã báo cáo:</span>
-                <strong>{expenses.length}</strong>
-              </div>
-            </div>
-          </div>
+        {/* Nơi render các file bocxep.js / laixe.js / vanphong.js */}
+        <div className="portal-wrapper">
+          {renderPortal()}
         </div>
       </main>
     </div>
   );
+}
 }

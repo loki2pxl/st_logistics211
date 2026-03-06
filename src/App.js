@@ -1,3 +1,8 @@
+// src/App.js
+// ============================================================================
+// MAIN APPLICATION - Logistics Hub Central Router
+// ============================================================================
+
 import React, { useState, useEffect } from 'react';
 
 // Components - Matching your folder structure
@@ -6,14 +11,13 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { EmployeePortal } from './components/employee/EmployeePortal';
 
 // Services & Data
-import * as mockService from './data/dataService.js'; // TypeScript file (.ts)
-import { saveSession, clearSession, isAdmin } from './services/authService';
+import * as mockService from './data/dataService'; // Handles both .js and .ts
+import { saveSession, clearSession, isAdmin, getSession } from './services/authService';
 
 import './styles/global.css';
 
 // ⚡ THE MASTER TOGGLE
-// Set to 'true' to use your mockData.js and dataService.ts
-// Set to 'false' to use the real services in your /services folder
+// Set to 'true' to use your mockData.js and bypass login for testing
 const USE_MOCK_DATA = true;
 
 export default function App() {
@@ -26,19 +30,21 @@ export default function App() {
       
       if (USE_MOCK_DATA) {
         // Automatically bypass login for fast dev testing
-        // You can comment this out to test the LoginPage
         const devUser = {
-          name: "Admin User",
+          name: "Nguyễn Văn Admin",
           role: "admin",
           branch: "hanoi",
-          employee_id: 1
+          employee_id: "EMP001" // String ID format matches your dashboards
         };
         setUser(devUser);
       } else {
-        // Real session check logic
-        // const saved = getSession(); if(saved) setUser(saved);
+        // Real session check logic for production
+        const saved = getSession(); 
+        if(saved) setUser(saved);
       }
-      setIsLoading(false);
+      
+      // Artificial delay to show the branding loader
+      setTimeout(() => setIsLoading(false), 1000);
     };
 
     initializeApp();
@@ -48,19 +54,15 @@ export default function App() {
   const handleLogin = async (email, password) => {
     try {
       let userData;
-      
       if (USE_MOCK_DATA) {
-        // Uses your dataService.ts + mockData.js
         userData = await mockService.login(email, password);
       } else {
-        // This would call your real authService.js
-        throw new Error("Real database not connected yet.");
+        throw new Error("Vui lòng kết nối cơ sở dữ liệu Supabase.");
       }
       
       setUser(userData);
       saveSession(userData);
     } catch (err) {
-      // Passes the error message to the UI
       throw err; 
     }
   };
@@ -70,33 +72,30 @@ export default function App() {
     clearSession();
   };
 
+  // 1. Brand Loading Screen
   if (isLoading) {
     return (
-      <div className="loading-container" style={loadingStyles}>
-        <h2>ST LOGISTICS</h2>
-        <p>Initializing {USE_MOCK_DATA ? 'Mock' : 'Live'} System...</p>
+      <div className="loading-screen">
+        <div className="loader-content text-center">
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '3rem', letterSpacing: '4px' }}>
+            LOGISTICS HUB
+          </h1>
+          <p style={{ opacity: 0.8, marginTop: '10px' }}>Đang khởi động hệ thống quản lý...</p>
+        </div>
       </div>
     );
   }
 
+  // 2. Authentication Route
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
+  // 3. Dashboard Routing
+  // Checks user.role to decide which dashboard to render
   return isAdmin(user) ? (
     <AdminDashboard user={user} onLogout={handleLogout} />
   ) : (
     <EmployeePortal user={user} onLogout={handleLogout} />
   );
 }
-
-const loadingStyles = {
-  minHeight: '100vh',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%)',
-  color: 'white',
-  fontFamily: 'Outfit, sans-serif',
-};

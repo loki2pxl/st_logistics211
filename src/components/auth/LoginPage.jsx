@@ -3,7 +3,7 @@
 // LOGIN PAGE COMPONENT
 // ============================================================================
 import React, { useState } from 'react';
-import login from "../../data/dataService.js"; // Ensure path is correct
+import { login } from "../../data/dataService.js"; // Ensure path is correct
 import { loginStyles } from './LoginPage.styles';
 
 export const LoginPage = ({ onLogin }) => {

@@ -1,224 +1,104 @@
-/* src/styles/global.css */
-
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Bebas+Neue&display=swap');
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* src/styles/global.css - Bản cập nhật đồng bộ */
 
 :root {
-  /* Colors */
   --primary: #0f172a;
-  --primary-light: #1e293b;
-  --accent: #7e22ce; /* Purple */
-  --accent-hover: #9333ea;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  
-  /* Sidebar Specific */
-  --sidebar-bg: rgba(15, 23, 42, 0.95);
-  
-  /* Spacing */
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  
-  /* Shadows */
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --accent: #7e22ce;        /* Tím - Văn Phòng */
+  --driver-blue: #2563eb;   /* Xanh - Lái Xe */
+  --loader-amber: #d97706;  /* Cam - Bốc Xếp */
+  --bg-light: #f8fafc;
+  --radius: 12px;
 }
 
-body {
-  font-family: 'Outfit', sans-serif;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
-  min-height: 100vh;
-  color: white;
-  overflow-x: hidden;
-}
-
-/* ========================================================================== */
-/* LAYOUT: DASHBOARD & SIDEBAR */
-/* ========================================================================== */
-
+/* --- Cấu trúc Layout --- */
 .dashboard-container {
   display: flex;
   min-height: 100vh;
-  width: 100%;
+  background: var(--bg-light);
 }
 
 .sidebar {
-  width: 260px;
-  background: var(--sidebar-bg);
-  backdrop-filter: blur(10px);
-  padding: var(--spacing-lg);
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.logo-section h2 {
-  font-family: 'Bebas Neue', cursive;
-  font-size: 2rem;
-  letter-spacing: 2px;
-  margin-bottom: 2rem;
+  width: 280px;
+  background: var(--primary);
+  padding: 2rem 1.5rem;
   color: white;
+  position: fixed;
+  height: 100vh;
 }
-
-.nav-menu {
-  list-style: none;
-  flex-grow: 1;
-}
-
-.nav-item {
-  padding: 0.8rem 1rem;
-  margin-bottom: 0.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.nav-item:hover, .nav-item.active {
-  background: var(--accent);
-  color: white;
-}
-
-.menu-divider {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 1.5rem 0 0.5rem 1rem;
-  letter-spacing: 1px;
-}
-
-/* ========================================================================== */
-/* MAIN CONTENT & CARDS */
-/* ========================================================================== */
 
 .main-content {
-  flex-grow: 1;
-  padding: var(--spacing-lg);
-  overflow-y: auto;
+  margin-left: 280px;
+  flex: 1;
+  padding: 2.5rem;
 }
 
-.dashboard-header {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 1rem 2rem;
-  border-radius: var(--radius-lg);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  color: var(--primary);
-}
-
-.branch-selector {
-  display: flex;
-  gap: 0.5rem;
-  background: #f1f5f9;
-  padding: 4px;
-  border-radius: 30px;
-}
-
-.branch-btn {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 20px;
+/* --- Menu điều hướng --- */
+.nav-item {
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 8px;
   cursor: pointer;
-  font-weight: 600;
-  background: transparent;
+  transition: 0.3s;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.branch-btn.active {
-  background: var(--accent);
-  color: white;
-}
+.nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+.nav-item.active { background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(126, 34, 206, 0.3); }
 
-.grid-layout {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--spacing-lg);
-}
-
+/* --- Thẻ Card theo từng nhóm (Khớp với logic Portal) --- */
 .card {
   background: white;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-lg);
-  color: var(--primary);
-  margin-bottom: var(--spacing-lg);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
 }
 
-.yellow-card {
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-  color: white;
-}
+/* Gradient nhận diện nhanh cho nhân viên */
+.card-header-driver { border-left: 5px solid var(--driver-blue); }
+.card-header-loader { border-left: 5px solid var(--loader-amber); }
+.card-header-office { border-left: 5px solid var(--accent); }
 
-/* ========================================================================== */
-/* FORMS & BUTTONS */
-/* ========================================================================== */
+.checkin-card { color: white; }
+.checkin-card.driver { background: linear-gradient(135deg, var(--driver-blue) 0%, #1e40af 100%); }
+.checkin-card.loader { background: linear-gradient(135deg, var(--loader-amber) 0%, #b45309 100%); }
+.checkin-card.office { background: linear-gradient(135deg, var(--accent) 0%, #6b21a8 100%); }
 
-.form-group {
-  margin-bottom: 1.2rem;
+/* --- Form nhập liệu --- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
 }
 
 .form-group label {
   display: block;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: #475569;
 }
 
-.form-group input, .form-group textarea {
+.form-group input, .form-group select, .form-group textarea {
   width: 100%;
-  padding: 0.8rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-family: inherit;
 }
 
-.btn-primary {
-  background: var(--accent);
+.btn-submit {
+  padding: 0.8rem 2rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
   color: white;
-  border: none;
-  padding: 1rem;
-  width: 100%;
-  border-radius: 0.5rem;
-  font-weight: 700;
-  cursor: pointer;
+  transition: 0.2s;
 }
 
-.btn-white {
-  background: white;
-  color: var(--warning);
-  border: none;
-  padding: 0.8rem 2rem;
-  border-radius: 0.5rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.btn-disabled {
-  background: rgba(255, 255, 255, 0.3);
-  color: rgba(255, 255, 255, 0.6);
-  border: none;
-  padding: 0.8rem 2rem;
-  border-radius: 0.5rem;
-  cursor: not-allowed;
-}
-
-.loading-screen {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .grid-layout { grid-template-columns: 1fr; }
-  .sidebar { width: 80px; }
-  .sidebar h2, .sidebar .nav-item span { display: none; }
-}
+.btn-driver { background: var(--driver-blue); }
+.btn-loader { background: var(--loader-amber); }
+.btn-office { background: var(--accent); }

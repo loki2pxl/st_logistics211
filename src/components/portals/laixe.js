@@ -1,9 +1,9 @@
 // src/components/portals/laixe.js
 import React, { useState, useEffect } from 'react';
-import attendanceService from '../../services/attendanceService';
-import shipmentService from '../../services/shipmentService';
-import expenseService from '../../services/expenseService';
-import storageService from '../../services/storageService';
+import { attendanceService } from '../../services/attendanceService';
+import { shipmentService } from '../../services/shipmentService';
+import { expenseService } from '../../services/expenseService';
+import { storageService } from '../../services/storageService';
 
 export default function LaiXePortal({ user, onLogout }) {
   const [currentTime, setCurrentTime] = useState(new Date());

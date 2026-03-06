@@ -1,7 +1,7 @@
 // src/components/portals/bocxep.js
 import React, { useState, useEffect } from 'react';
-import attendanceService from '../../services/attendanceService';
-import employeeService from '../../services/employeeService';
+import { attendanceService } from  '../../services/attendanceService';
+import { employeeService } from '../../services/employeeService';
 
 export default function BocXepPortal({ user, onLogout }) {
   const [currentTime, setCurrentTime] = useState(new Date());

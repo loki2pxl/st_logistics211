@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 // ✅ Correct: Use curly braces because login is a NAMED export
-import { login } from "../data/dataService"; 
+import { login } from "../data/dataService.js"; 
 import { saveUser } from "../utils/auth";
 
 export default function Login({ onLogin }) {

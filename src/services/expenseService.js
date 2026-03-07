@@ -1,8 +1,4 @@
 // src/services/expenseService.js
-// ============================================================================
-// EXPENSE DATABASE SERVICE
-// ============================================================================
-
 import { supabase } from '../config/supabase';
 
 /**
@@ -22,20 +18,19 @@ export const getExpenses = async (branch) => {
 /**
  * Get expenses by employee
  */
-export const getExpensesByEmployee = async (employeeName) => {
+export const getExpensesByEmployee = async (employeeId) => {
   const { data, error } = await supabase
     .from('expenses')
     .select('*')
-    .eq('paid_by', employeeName)
-    .order('date', { ascending: false })
-    .limit(10);
+    .eq('paid_by_employee_id', employeeId)
+    .order('date', { ascending: false });
   
   if (error) throw error;
   return data || [];
 };
 
 /**
- * Create new expense
+ * Create expense
  */
 export const createExpense = async (expenseData) => {
   const { data, error } = await supabase
@@ -51,10 +46,10 @@ export const createExpense = async (expenseData) => {
 /**
  * Update expense
  */
-export const updateExpense = async (id, updates) => {
+export const updateExpense = async (id, expenseData) => {
   const { data, error } = await supabase
     .from('expenses')
-    .update(updates)
+    .update(expenseData)
     .eq('id', id)
     .select()
     .single();
@@ -80,9 +75,84 @@ export const deleteExpense = async (id) => {
  * Approve expense
  */
 export const approveExpense = async (id, approvedBy) => {
-  return updateExpense(id, {
-    approved: true,
-    approved_by: approvedBy,
-    approved_at: new Date().toISOString(),
-  });
+  const { data, error } = await supabase
+    .from('expenses')
+    .update({ 
+      approved: true,
+      approved_by: approvedBy,
+      approved_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
 };
+
+// ============================================================================
+// DRIVER-SPECIFIC METHODS (for LaiXe portal)
+// ============================================================================
+
+/**
+ * Get employee's fuel expenses
+ */
+export const getEmployeeExpenses = async (employeeId, days = 7) => {
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - days);
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .eq('paid_by_employee_id', employeeId)
+    .gte('date', fromDate.toISOString().split('T')[0])
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+/**
+ * Create fuel expense (for drivers)
+ */
+export const createFuelExpense = async (expenseData) => {
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .insert([
+      {
+        employee_id: expenseData.employee_id,
+        paid_by: expenseData.paid_by,
+        paid_by_employee_id: expenseData.employee_id,
+        branch: expenseData.branch,
+        date: today,
+        type: 'fuel',
+        amount: expenseData.amount,
+        description: expenseData.description,
+        invoice_urls: expenseData.invoice_urls || [],
+        // Custom fields
+        fuel_liters: expenseData.fuel_liters,
+        vehicle_plate: expenseData.vehicle_plate,
+        order_code: expenseData.order_code,
+      }
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+const expenseService = {
+  getExpenses,
+  getExpensesByEmployee,
+  createExpense,
+  updateExpense,
+  deleteExpense,
+  approveExpense,
+  getEmployeeExpenses,
+  createFuelExpense,
+};
+
+export default expenseService;

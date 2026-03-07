@@ -1,9 +1,13 @@
-// src/components/portals/laixe.js
-import React, { useState, useEffect } from 'react';
-import { attendanceService } from '../../services/attendanceService';
-import { shipmentService } from '../../services/shipmentService';
-import { expenseService } from '../../services/expenseService';
-import { storageService } from '../../services/storageService';
+// src/components/portals/laixe.js  
+// ============================================================================
+// LÁI XE PORTAL - Nhập liệu cho nhóm lái xe
+// ============================================================================
+import React, { useState, useEffect } from "react";
+import attendanceService from "../../services/attendanceService";
+import shipmentService from "../../services/shipmentService";
+import expenseService from "../../services/expenseService";
+import storageService from "../../services/storageService";
+import "../../styles/global.css";
 
 export default function LaiXePortal({ user, onLogout }) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -12,7 +16,7 @@ export default function LaiXePortal({ user, onLogout }) {
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
-  // Form state cho báo cáo chuyến đi
+  // Form state
   const [tripReport, setTripReport] = useState({
     vehicle_plate: '',
     order_code: '',
@@ -25,55 +29,42 @@ export default function LaiXePortal({ user, onLogout }) {
     notes: '',
   });
 
-  // Danh sách xe (có thể load từ DB hoặc hardcode)
   const vehicles = [
     { id: 'VN-29A-12345', name: '29A-12345' },
     { id: 'VN-30B-67890', name: '30B-67890' },
-    { id: 'VN-31C-11111', name: '31C-11111' },
     { id: 'VN-51D-22222', name: '51D-22222' },
   ];
 
-  // Update clock every second
+  // Update clock
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Load data khi component mount
+  // Load data
   useEffect(() => {
     loadTodayAttendance();
     loadTripHistory();
   }, []);
 
-  // =============================================================================
-  // DATA LOADING
-  // =============================================================================
   const loadTodayAttendance = async () => {
     try {
       const data = await attendanceService.getTodayAttendance(user.employee_id);
       setTodayAttendance(data);
     } catch (error) {
-      console.error('Error loading attendance:', error);
+      console.error('Error:', error);
     }
   };
 
   const loadTripHistory = async () => {
     try {
-      // Load shipments assigned to this driver (7 days)
       const shipments = await shipmentService.getDriverShipments(user.employee_id, 7);
-      
-      // Load fuel expenses by this driver
       const expenses = await expenseService.getEmployeeExpenses(user.employee_id, 7);
 
-      // Merge shipments với expenses theo date
       const merged = (shipments || []).map(shipment => {
-        // Tìm chi phí xăng cùng ngày với chuyến đi
         const expense = (expenses || []).find(
           e => e.date === shipment.date && e.order_code === shipment.order_code
         );
-        
         return {
           ...shipment,
           fuel_cost: expense?.amount || 0,
@@ -83,13 +74,10 @@ export default function LaiXePortal({ user, onLogout }) {
 
       setTripHistory(merged);
     } catch (error) {
-      console.error('Error loading trip history:', error);
+      console.error('Error:', error);
     }
   };
 
-  // =============================================================================
-  // CHECK IN/OUT
-  // =============================================================================
   const handleCheckIn = async () => {
     setLoading(true);
     try {
@@ -105,7 +93,6 @@ export default function LaiXePortal({ user, onLogout }) {
 
   const handleCheckOut = async () => {
     if (!todayAttendance) return;
-    
     setLoading(true);
     try {
       await attendanceService.checkOut(todayAttendance.id);
@@ -118,41 +105,28 @@ export default function LaiXePortal({ user, onLogout }) {
     }
   };
 
-  // =============================================================================
-  // FILE UPLOAD
-  // =============================================================================
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    setUploadedFiles(files);
+    setUploadedFiles(Array.from(e.target.files));
   };
 
   const uploadInvoices = async () => {
     if (uploadedFiles.length === 0) return [];
-
-    const uploadedUrls = [];
-    for (const file of uploadedFiles) {
-      try {
-        const url = await storageService.uploadFile(file, 'fuel-invoices');
-        if (url) uploadedUrls.push(url);
-      } catch (error) {
-        console.error('Upload error:', error);
-      }
+    try {
+      const urls = await storageService.uploadMultipleFiles(uploadedFiles, 'invoices');
+      return urls;
+    } catch (error) {
+      console.error('Upload error:', error);
+      return [];
     }
-    return uploadedUrls;
   };
 
-  // =============================================================================
-  // TRIP REPORT SUBMISSION
-  // =============================================================================
   const handleSubmitTripReport = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Upload invoices nếu có
       const invoiceUrls = await uploadInvoices();
 
-      // 1. Update/Create shipment
       await shipmentService.createDriverTrip({
         order_code: tripReport.order_code,
         driver_id: user.employee_id,
@@ -166,7 +140,6 @@ export default function LaiXePortal({ user, onLogout }) {
         notes: tripReport.notes,
       });
 
-      // 2. Create fuel expense nếu có chi phí xăng
       if (tripReport.fuel_cost && parseFloat(tripReport.fuel_cost) > 0) {
         await expenseService.createFuelExpense({
           employee_id: user.employee_id,
@@ -182,8 +155,6 @@ export default function LaiXePortal({ user, onLogout }) {
       }
 
       await loadTripHistory();
-      
-      // Reset form
       setTripReport({
         vehicle_plate: '',
         order_code: '',
@@ -196,7 +167,6 @@ export default function LaiXePortal({ user, onLogout }) {
         notes: '',
       });
       setUploadedFiles([]);
-      
       alert('✅ Đã lưu báo cáo chuyến đi!');
     } catch (error) {
       alert('❌ Lỗi: ' + error.message);
@@ -205,626 +175,302 @@ export default function LaiXePortal({ user, onLogout }) {
     }
   };
 
-  // =============================================================================
-  // RENDER
-  // =============================================================================
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('vi-VN');
+  };
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      'shipping': 'ĐANG ĐI',
+      'delivered': 'ĐÃ GIAO',
+      'pending': 'CHƯA XUẤT PHÁT',
+    };
+    return labels[status] || status;
+  };
+
+  const getStatusStyle = (status) => {
+    const styles = {
+      'shipping': { background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' },
+      'delivered': { background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' },
+      'pending': { background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' },
+    };
+    return styles[status] || styles.pending;
+  };
+
   return (
-    <div style={styles.container}>
-      <style>{globalStyles}</style>
-
+    <div className="portal-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '2rem' }}>
+      
       {/* Header */}
-      <header style={styles.header}>
-        <div>
-          <div style={styles.headerIcon}>🚛</div>
-          <h1 style={styles.headerTitle}>Nhập Liệu - Nhóm Lái Xe</h1>
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ color: '#1e293b', margin: 0 }}>🚛 Nhập Liệu - Nhóm Lái Xe</h3>
+        <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+          Nhân viên: <strong>{user?.name}</strong>
         </div>
-        <div style={styles.headerRight}>
-          <select style={styles.employeeSelect}>
-            <option>{user.name}</option>
-          </select>
-        </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main style={styles.main}>
-        {/* PHẦN 1: CHẤM CÔNG NHANH */}
-        <div style={styles.checkInSection}>
-          <h2 style={styles.sectionTitle}>
-            <span style={styles.titleIcon}>⏰</span>
-            Chấm Công Nhanh
-          </h2>
-
-          <div style={styles.checkInGrid}>
-            {/* Left: Clock */}
-            <div style={styles.clockCard}>
-              <div style={styles.clockLabel}>Thời gian hiện tại</div>
-              <div style={styles.clockTime}>
-                {currentTime.toTimeString().slice(0, 8)}
-              </div>
-              <button 
-                style={{...styles.btn, ...styles.btnCheckIn}}
-                onClick={handleCheckIn}
-                disabled={loading || todayAttendance}
-              >
-                ✓ Check In
-              </button>
-            </div>
-
-            {/* Right: Status */}
-            <div style={styles.statusCard}>
-              <div style={styles.clockLabel}>Trạng thái hôm nay</div>
-              {todayAttendance ? (
-                <>
-                  <div style={styles.statusText}>
-                    Đã check in: {todayAttendance.check_in}
-                  </div>
-                  {todayAttendance.check_out ? (
-                    <div style={{...styles.statusText, color: '#10b981'}}>
-                      ✅ Đã check out: {todayAttendance.check_out}
-                    </div>
-                  ) : (
-                    <button 
-                      style={{...styles.btn, ...styles.btnCheckOut}}
-                      onClick={handleCheckOut}
-                      disabled={loading}
-                    >
-                      ✗ Check Out
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div style={{...styles.statusText, color: '#f59e0b'}}>
-                  Chưa check in
-                </div>
-              )}
-            </div>
+      {/* Chấm công */}
+      <div className="card" style={{ background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
+        <h3 style={{ margin: '0 0 1rem 0' }}>⏰ Chấm Công Nhanh</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          
+          <div style={{ background: 'rgba(255,255,255,0.15)', padding: '1.5rem', borderRadius: '12px' }}>
+            <span style={{ opacity: 0.9, fontSize: '0.9rem' }}>Thời gian hiện tại</span>
+            <h2 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: 'bold', fontFamily: 'monospace' }}>
+              {currentTime.toLocaleTimeString('vi-VN')}
+            </h2>
+            <button 
+              onClick={handleCheckIn}
+              disabled={loading || todayAttendance}
+              style={{ 
+                width: '100%', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', 
+                cursor: todayAttendance ? 'not-allowed' : 'pointer',
+                background: todayAttendance ? 'rgba(255,255,255,0.3)' : 'white', 
+                color: todayAttendance ? 'rgba(255,255,255,0.7)' : '#3b82f6' 
+              }}
+            >
+              ✓ Check In
+            </button>
           </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.15)', padding: '1.5rem', borderRadius: '12px' }}>
+            <span style={{ opacity: 0.9, fontSize: '0.9rem' }}>Trạng thái hôm nay</span>
+            <h2 style={{ fontSize: '1.5rem', margin: '1rem 0', fontWeight: 'bold' }}>
+              {todayAttendance ? (
+                todayAttendance.check_out ? 'Đã hoàn thành' : `Đã check-in: ${todayAttendance.check_in}`
+              ) : 'Chưa check in'}
+            </h2>
+            <button 
+              onClick={handleCheckOut}
+              disabled={loading || !todayAttendance || todayAttendance?.check_out}
+              style={{ 
+                width: '100%', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', 
+                cursor: (!todayAttendance || todayAttendance?.check_out) ? 'not-allowed' : 'pointer',
+                background: (!todayAttendance || todayAttendance?.check_out) ? 'rgba(255,255,255,0.2)' : 'white', 
+                color: (!todayAttendance || todayAttendance?.check_out) ? 'rgba(255,255,255,0.5)' : '#3b82f6' 
+              }}
+            >
+              ✗ Check Out
+            </button>
+          </div>
+
         </div>
+      </div>
 
-        {/* PHẦN 2: BÁO CÁO CHUYẾN ĐI */}
-        <div style={styles.reportSection}>
-          <h2 style={styles.sectionTitle}>
-            <span style={styles.titleIcon}>🚗</span>
-            Báo Cáo Chuyến Đi
-          </h2>
-
-          <form onSubmit={handleSubmitTripReport} style={styles.form}>
-            <div style={styles.formGrid}>
-              {/* Biển số xe */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Biển số xe</label>
-                <select
-                  style={styles.select}
-                  value={tripReport.vehicle_plate}
-                  onChange={(e) => setTripReport({...tripReport, vehicle_plate: e.target.value})}
-                  required
-                >
-                  <option value="">Chọn xe</option>
-                  {vehicles.map(v => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Mã đơn hàng */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Mã đơn hàng</label>
-                <input
-                  type="text"
-                  style={styles.input}
-                  placeholder="DH-2024-XXX"
-                  value={tripReport.order_code}
-                  onChange={(e) => setTripReport({...tripReport, order_code: e.target.value})}
-                  required
-                />
-              </div>
-
-              {/* Điểm đi */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Điểm đi</label>
-                <input
-                  type="text"
-                  style={styles.input}
-                  placeholder="Nhập địa điểm"
-                  value={tripReport.from_location}
-                  onChange={(e) => setTripReport({...tripReport, from_location: e.target.value})}
-                  required
-                />
-              </div>
-
-              {/* Điểm đến */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Điểm đến</label>
-                <input
-                  type="text"
-                  style={styles.input}
-                  placeholder="Nhập địa điểm"
-                  value={tripReport.to_location}
-                  onChange={(e) => setTripReport({...tripReport, to_location: e.target.value})}
-                  required
-                />
-              </div>
-
-              {/* Số km đã chạy */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Số km đã chạy</label>
-                <input
-                  type="number"
-                  style={styles.input}
-                  placeholder="0"
-                  value={tripReport.distance_km}
-                  onChange={(e) => setTripReport({...tripReport, distance_km: e.target.value})}
-                  min="0"
-                  required
-                />
-              </div>
-
-              {/* Lượng xăng đổ */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Lượng xăng đổ (lít)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  style={styles.input}
-                  placeholder="0"
-                  value={tripReport.fuel_liters}
-                  onChange={(e) => setTripReport({...tripReport, fuel_liters: e.target.value})}
-                  min="0"
-                />
-              </div>
-
-              {/* Chi phí xăng */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Chi phí xăng (VNĐ)</label>
-                <input
-                  type="number"
-                  style={styles.input}
-                  placeholder="0"
-                  value={tripReport.fuel_cost}
-                  onChange={(e) => setTripReport({...tripReport, fuel_cost: e.target.value})}
-                  min="0"
-                />
-              </div>
-
-              {/* Trạng thái giao hàng */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Trạng thái giao hàng</label>
-                <select
-                  style={styles.select}
-                  value={tripReport.delivery_status}
-                  onChange={(e) => setTripReport({...tripReport, delivery_status: e.target.value})}
-                  required
-                >
-                  <option value="shipping">Đang vận chuyển</option>
-                  <option value="delivered">Đã giao hàng</option>
-                  <option value="pending">Chưa xuất phát</option>
-                </select>
-              </div>
+      {/* Báo cáo chuyến đi */}
+      <div className="card">
+        <h3 style={{ color: '#1e293b', marginBottom: '1.5rem' }}>🚗 Báo Cáo Chuyến Đi</h3>
+        <form onSubmit={handleSubmitTripReport}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Biển số xe</label>
+              <select
+                value={tripReport.vehicle_plate}
+                onChange={(e) => setTripReport({...tripReport, vehicle_plate: e.target.value})}
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              >
+                <option value="">Chọn xe</option>
+                {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
             </div>
 
-            {/* Upload hóa đơn xăng */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Upload hóa đơn xăng</label>
-              <div style={styles.fileUploadArea}>
-                <input
-                  type="file"
-                  id="invoice-upload"
-                  style={styles.fileInput}
-                  onChange={handleFileChange}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  multiple
-                />
-                <label htmlFor="invoice-upload" style={styles.fileUploadLabel}>
-                  <span style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📁</span>
-                  <span>Click để chọn file</span>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                    {uploadedFiles.length > 0 
-                      ? `${uploadedFiles.length} file đã chọn`
-                      : 'PDF, JPG, PNG'}
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Ghi chú chuyến đi */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Ghi chú chuyến đi</label>
-              <textarea
-                style={{...styles.input, minHeight: '80px', resize: 'vertical'}}
-                placeholder="Tình trạng xe, đường xá, thời tiết..."
-                value={tripReport.notes}
-                onChange={(e) => setTripReport({...tripReport, notes: e.target.value})}
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Mã đơn hàng</label>
+              <input
+                type="text"
+                value={tripReport.order_code}
+                onChange={(e) => setTripReport({...tripReport, order_code: e.target.value})}
+                placeholder="DH-2024-XXX"
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
               />
             </div>
 
-            <button 
-              type="submit" 
-              style={{...styles.btn, ...styles.btnSubmit}}
-              disabled={loading}
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Điểm đi</label>
+              <input
+                type="text"
+                value={tripReport.from_location}
+                onChange={(e) => setTripReport({...tripReport, from_location: e.target.value})}
+                placeholder="Nhập địa điểm"
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Điểm đến</label>
+              <input
+                type="text"
+                value={tripReport.to_location}
+                onChange={(e) => setTripReport({...tripReport, to_location: e.target.value})}
+                placeholder="Nhập địa điểm"
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Số km đã chạy</label>
+              <input
+                type="number"
+                value={tripReport.distance_km}
+                onChange={(e) => setTripReport({...tripReport, distance_km: e.target.value})}
+                min="0"
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Lượng xăng đổ (lít)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={tripReport.fuel_liters}
+                onChange={(e) => setTripReport({...tripReport, fuel_liters: e.target.value})}
+                min="0"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Chi phí xăng (VNĐ)</label>
+              <input
+                type="number"
+                value={tripReport.fuel_cost}
+                onChange={(e) => setTripReport({...tripReport, fuel_cost: e.target.value})}
+                min="0"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Trạng thái giao hàng</label>
+              <select
+                value={tripReport.delivery_status}
+                onChange={(e) => setTripReport({...tripReport, delivery_status: e.target.value})}
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              >
+                <option value="shipping">Đang vận chuyển</option>
+                <option value="delivered">Đã giao hàng</option>
+                <option value="pending">Chưa xuất phát</option>
+              </select>
+            </div>
+
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Upload hóa đơn xăng</label>
+            <input
+              type="file"
+              id="invoice-upload"
+              onChange={handleFileChange}
+              accept=".pdf,.jpg,.jpeg,.png"
+              multiple
+              style={{ display: 'none' }}
+            />
+            <label 
+              htmlFor="invoice-upload"
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                padding: '2rem', 
+                border: '2px dashed #cbd5e1', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                color: '#64748b', 
+                backgroundColor: '#f8fafc',
+                textAlign: 'center'
+              }}
             >
-              💾 Lưu Báo Cáo
-            </button>
-          </form>
-        </div>
+              <span style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📁</span>
+              <span>Click để chọn file</span>
+              <span style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                {uploadedFiles.length > 0 ? `${uploadedFiles.length} file đã chọn` : 'PDF, JPG, PNG'}
+              </span>
+            </label>
+          </div>
 
-        {/* PHẦN 3: LỊCH SỬ CHUYẾN ĐI */}
-        <div style={styles.historySection}>
-          <h2 style={styles.sectionTitle}>
-            <span style={styles.titleIcon}>📊</span>
-            Lịch Sử Chuyến Đi
-          </h2>
+          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Ghi chú chuyến đi</label>
+            <textarea
+              value={tripReport.notes}
+              onChange={(e) => setTripReport({...tripReport, notes: e.target.value})}
+              rows="3"
+              placeholder="Tình trạng xe, đường xá..."
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical' }}
+            />
+          </div>
 
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
+          <button 
+            type="submit" 
+            disabled={loading}
+            style={{ background: '#6366f1', color: 'white', padding: '12px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            💾 Lưu Báo Cáo
+          </button>
+        </form>
+      </div>
+
+      {/* Lịch sử */}
+      <div className="card">
+        <h3 style={{ color: '#1e293b', marginBottom: '1.5rem' }}>📊 Lịch Sử Chuyến Đi</h3>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc' }}>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>NGÀY</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>MÃ ĐƠN</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>TUYẾN ĐƯỜNG</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>SỐ KM</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>CHI PHÍ XĂNG</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>TRẠNG THÁI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tripHistory.length === 0 ? (
                 <tr>
-                  <th style={styles.th}>NGÀY</th>
-                  <th style={styles.th}>MÃ ĐƠN</th>
-                  <th style={styles.th}>TUYẾN ĐƯỜNG</th>
-                  <th style={styles.th}>SỐ KM</th>
-                  <th style={styles.th}>CHI PHÍ XĂNG</th>
-                  <th style={styles.th}>TRẠNG THÁI</th>
+                  <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>
+                    Chưa có chuyến đi nào
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {tripHistory.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" style={styles.emptyState}>
-                      Chưa có chuyến đi nào
+              ) : (
+                tripHistory.map((trip, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>{formatDate(trip.date)}</td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}><strong>{trip.order_code}</strong></td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>
+                      {trip.from_location} → {trip.to_location}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>{trip.distance_km} km</td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>
+                      {trip.fuel_cost > 0 ? <strong>₫ {trip.fuel_cost.toLocaleString()}</strong> : '-'}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={{
+                        ...getStatusStyle(trip.status),
+                        padding: '0.375rem 0.875rem',
+                        borderRadius: '2rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        display: 'inline-block',
+                        textTransform: 'uppercase'
+                      }}>
+                        {getStatusLabel(trip.status)}
+                      </span>
                     </td>
                   </tr>
-                ) : (
-                  tripHistory.map((trip, i) => (
-                    <tr key={i} style={styles.tr}>
-                      <td style={styles.td}>{formatDate(trip.date)}</td>
-                      <td style={styles.td}><strong>{trip.order_code}</strong></td>
-                      <td style={styles.td}>
-                        {trip.from_location} → {trip.to_location}
-                      </td>
-                      <td style={styles.td}>{trip.distance_km} km</td>
-                      <td style={styles.td}>
-                        {trip.fuel_cost > 0 ? (
-                          <strong>₫ {trip.fuel_cost.toLocaleString()}</strong>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td style={styles.td}>
-                        <span style={getStatusBadge(trip.delivery_status)}>
-                          {getStatusLabel(trip.delivery_status)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </main>
-
-      {/* Logout Button */}
-      <div style={styles.logoutContainer}>
-        <button style={styles.logoutBtn} onClick={onLogout}>
-          🚪 Đăng Xuất
-        </button>
       </div>
+
     </div>
   );
 }
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-function formatDate(dateStr) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-}
-
-function getStatusLabel(status) {
-  const labels = {
-    'shipping': 'ĐANG ĐI',
-    'delivered': 'ĐÃ GIAO',
-    'pending': 'CHƯA XUẤT PHÁT',
-  };
-  return labels[status] || status;
-}
-
-function getStatusBadge(status) {
-  const badges = {
-    'shipping': { background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' },
-    'delivered': { background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' },
-    'pending': { background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' },
-  };
-  
-  const style = badges[status] || badges.pending;
-  
-  return {
-    ...style,
-    padding: '0.375rem 0.875rem',
-    borderRadius: '2rem',
-    fontSize: '0.75rem',
-    fontWeight: 700,
-    display: 'inline-block',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  };
-}
-
-// =============================================================================
-// STYLES
-// =============================================================================
-const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-  
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  }
-`;
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '1rem',
-  },
-  
-  header: {
-    background: 'white',
-    borderRadius: '1.5rem',
-    padding: '1.5rem 2rem',
-    marginBottom: '1.5rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-  },
-  headerIcon: {
-    fontSize: '2rem',
-    marginBottom: '0.5rem',
-  },
-  headerTitle: {
-    fontSize: '1.75rem',
-    fontWeight: 800,
-    color: '#1e293b',
-    margin: 0,
-  },
-  headerRight: {
-    display: 'flex',
-    gap: '1rem',
-  },
-  employeeSelect: {
-    padding: '0.75rem 1.5rem',
-    borderRadius: '0.75rem',
-    border: '2px solid #e2e8f0',
-    fontSize: '1rem',
-    fontWeight: 600,
-    background: 'white',
-    cursor: 'pointer',
-  },
-
-  main: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-  },
-
-  checkInSection: {
-    background: 'white',
-    borderRadius: '1.5rem',
-    padding: '2rem',
-    marginBottom: '1.5rem',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-  },
-  reportSection: {
-    background: 'white',
-    borderRadius: '1.5rem',
-    padding: '2rem',
-    marginBottom: '1.5rem',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-  },
-  historySection: {
-    background: 'white',
-    borderRadius: '1.5rem',
-    padding: '2rem',
-    marginBottom: '1.5rem',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-  },
-
-  sectionTitle: {
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    color: '#1e293b',
-    marginBottom: '1.5rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  titleIcon: {
-    fontSize: '1.75rem',
-  },
-
-  checkInGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '1.5rem',
-  },
-  clockCard: {
-    background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
-    borderRadius: '1.25rem',
-    padding: '2rem',
-    textAlign: 'center',
-    color: 'white',
-  },
-  statusCard: {
-    background: 'linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%)',
-    borderRadius: '1.25rem',
-    padding: '2rem',
-    textAlign: 'center',
-    color: 'white',
-  },
-  clockLabel: {
-    fontSize: '0.95rem',
-    opacity: 0.9,
-    marginBottom: '1rem',
-    fontWeight: 500,
-  },
-  clockTime: {
-    fontSize: '3rem',
-    fontWeight: 800,
-    marginBottom: '1.5rem',
-    fontFamily: 'monospace',
-  },
-  statusText: {
-    fontSize: '1.25rem',
-    fontWeight: 600,
-    marginBottom: '1rem',
-  },
-
-  btn: {
-    padding: '1rem 2rem',
-    border: 'none',
-    borderRadius: '0.75rem',
-    fontSize: '1.1rem',
-    fontWeight: 700,
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    fontFamily: 'Inter, sans-serif',
-  },
-  btnCheckIn: {
-    background: 'white',
-    color: '#3b82f6',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  },
-  btnCheckOut: {
-    background: 'rgba(255,255,255,0.3)',
-    color: 'white',
-    border: '2px solid white',
-  },
-  btnSubmit: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    marginTop: '1rem',
-    width: '100%',
-    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-  },
-
-  form: {
-    marginTop: '1.5rem',
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '1.25rem',
-    marginBottom: '1.25rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  label: {
-    fontSize: '0.95rem',
-    fontWeight: 600,
-    color: '#475569',
-    marginBottom: '0.5rem',
-  },
-  input: {
-    padding: '0.875rem',
-    border: '2px solid #e2e8f0',
-    borderRadius: '0.75rem',
-    fontSize: '1rem',
-    fontFamily: 'Inter, sans-serif',
-    transition: 'border-color 0.3s ease',
-  },
-  select: {
-    padding: '0.875rem',
-    border: '2px solid #e2e8f0',
-    borderRadius: '0.75rem',
-    fontSize: '1rem',
-    fontFamily: 'Inter, sans-serif',
-    background: 'white',
-    cursor: 'pointer',
-  },
-
-  // File upload
-  fileUploadArea: {
-    position: 'relative',
-  },
-  fileInput: {
-    display: 'none',
-  },
-  fileUploadLabel: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '2rem',
-    border: '2px dashed #cbd5e1',
-    borderRadius: '0.75rem',
-    background: '#f8fafc',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    textAlign: 'center',
-  },
-
-  tableWrapper: {
-    overflowX: 'auto',
-    borderRadius: '1rem',
-    border: '1px solid #e2e8f0',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    padding: '1rem',
-    textAlign: 'left',
-    background: '#f8fafc',
-    fontWeight: 700,
-    fontSize: '0.8125rem',
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  tr: {
-    borderBottom: '1px solid #f1f5f9',
-    transition: 'background 0.2s ease',
-  },
-  td: {
-    padding: '1rem',
-    fontSize: '0.95rem',
-    color: '#1e293b',
-  },
-  emptyState: {
-    padding: '3rem',
-    textAlign: 'center',
-    color: '#94a3b8',
-    fontStyle: 'italic',
-  },
-
-  logoutContainer: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    textAlign: 'center',
-  },
-  logoutBtn: {
-    padding: '0.875rem 2rem',
-    background: '#ef4444',
-    color: 'white',
-    border: 'none',
-    borderRadius: '0.75rem',
-    fontSize: '1rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
-  },
-};

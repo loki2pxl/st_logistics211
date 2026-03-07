@@ -1,17 +1,15 @@
 // src/services/storageService.js
-// ============================================================================
-// FILE STORAGE SERVICE
-// ============================================================================
-
 import { supabase } from '../config/supabase';
 
 /**
- * Upload file to Supabase Storage
+ * Upload a single file to Supabase Storage
  */
-export const uploadFile = async (file, bucket = 'invoices', folder = '') => {
+export const uploadFile = async (file, bucket = 'invoices') => {
+  if (!file) return null;
+
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-  const filePath = folder ? `${folder}/${fileName}` : fileName;
+  const filePath = fileName;
 
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -33,37 +31,45 @@ export const uploadFile = async (file, bucket = 'invoices', folder = '') => {
 /**
  * Upload multiple files
  */
-export const uploadMultipleFiles = async (files, bucket = 'invoices', folder = '') => {
-  const uploadPromises = Array.from(files).map(file => 
-    uploadFile(file, bucket, folder)
-  );
-  
-  return Promise.all(uploadPromises);
+export const uploadMultipleFiles = async (files, bucket = 'invoices') => {
+  if (!files || files.length === 0) return [];
+
+  const uploadPromises = files.map(file => uploadFile(file, bucket));
+  const results = await Promise.allSettled(uploadPromises);
+
+  return results
+    .filter(result => result.status === 'fulfilled')
+    .map(result => result.value);
 };
 
 /**
- * Delete file from storage
+ * Delete a file from storage
  */
 export const deleteFile = async (filePath, bucket = 'invoices') => {
   const { error } = await supabase.storage
     .from(bucket)
     .remove([filePath]);
 
-  if (error) {
-    console.error('Delete error:', error);
-    throw error;
-  }
-
+  if (error) throw error;
   return true;
 };
 
 /**
- * Get file URL
+ * Get public URL of a file
  */
-export const getFileUrl = (filePath, bucket = 'invoices') => {
+export const getFileUrl = async (filePath, bucket = 'invoices') => {
   const { data } = supabase.storage
     .from(bucket)
     .getPublicUrl(filePath);
 
   return data.publicUrl;
 };
+
+const storageService = {
+  uploadFile,
+  uploadMultipleFiles,
+  deleteFile,
+  getFileUrl,
+};
+
+export default storageService;

@@ -3,7 +3,7 @@
 // EMPLOYEE PORTAL - DASHBOARD TỔNG QUAN CHO TẤT CẢ NHÂN VIÊN
 // Đây là trang TỔNG QUAN chung, KHÔNG phải nơi nhập liệu
 // ============================================================================
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import attendanceService from "../../services/attendanceService";
 import "../../styles/global.css";
 
@@ -57,19 +57,26 @@ export function EmployeePortal({ user, onLogout }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Load attendance data
-  useEffect(() => {
-    loadTodayAttendance();
-  }, []);
-
-  const loadTodayAttendance = async () => {
+// 1. Logic tải dữ liệu chấm công (Dùng useCallback để sửa lỗi Line 63)
+  const loadTodayAttendance = useCallback(async () => {
+    if (!user?.employee_id) return;
+    
     try {
+      setLoading(true);
+      // Bạn có thể đổi dòng dưới đây thành mock data nếu cần test nhanh:
+      // const data = { check_in: "08:15", status: "Đúng giờ" };
       const data = await attendanceService.getTodayAttendance(user.employee_id);
       setTodayAttendance(data);
     } catch (error) {
       console.error('Error loading attendance:', error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [user?.employee_id]);
+
+  useEffect(() => {
+    loadTodayAttendance();
+  }, [loadTodayAttendance]); // Thêm vào đây để đúng chuẩn ESLint
 
   const handleCheckIn = async () => {
     setLoading(true);

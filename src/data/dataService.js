@@ -23,7 +23,18 @@ const KEY_COORDINATIONS = "st_logistics_coordinations";
 const KEY_KPI = "st_logistics_kpi";
 
 // Helper to load or initialize
-const getStoredData = (key, defaultValue) => {
+const getStoredData = async (key, defaultValue) => {
+  try {
+    const res = await fetch(`http://localhost:3001/api/data?key=${key}`);
+    if (res.ok) {
+      const data = await res.json();
+      localStorage.setItem(key, JSON.stringify(data));
+      return data;
+    }
+  } catch (e) {
+    console.warn(`Local database server is offline. Falling back to localStorage for key: ${key}`);
+  }
+
   const stored = localStorage.getItem(key);
   if (!stored) {
     localStorage.setItem(key, JSON.stringify(defaultValue));
@@ -37,33 +48,44 @@ const getStoredData = (key, defaultValue) => {
 };
 
 // Helper to save data
-const saveStoredData = (key, data) => {
+const saveStoredData = async (key, data) => {
   localStorage.setItem(key, JSON.stringify(data));
+  try {
+    await fetch(`http://localhost:3001/api/data?key=${key}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+  } catch (e) {
+    console.warn(`Failed to sync to local database server for key: ${key}`, e);
+  }
 };
 
 // Helper to auto-merge initial seed elements if they are missing from LocalStorage (cache prevention)
-const getStoredDataMerged = (key, defaultValue, idField = 'id') => {
-  const stored = getStoredData(key, defaultValue);
+const getStoredDataMerged = async (key, defaultValue, idField = 'id') => {
+  const stored = await getStoredData(key, defaultValue);
   if (!Array.isArray(stored)) return stored;
   const storedIds = new Set(stored.map(item => item && item[idField]));
   const missing = defaultValue.filter(item => !storedIds.has(item[idField]));
   if (missing.length > 0) {
     const updated = [...stored, ...missing];
-    saveStoredData(key, updated);
+    await saveStoredData(key, updated);
     return updated;
   }
   return stored;
 };
 
 // Initialize Mock database in LocalStorage
-const getMockUsers = () => getStoredDataMerged(KEY_USERS, initialUsers, 'id');
-const getMockEmployees = () => getStoredDataMerged(KEY_EMPLOYEES, initialEmployees, 'employee_id');
-const getMockAttendance = () => getStoredDataMerged(KEY_ATTENDANCE, initialAttendance, 'id');
-const getMockShipments = () => getStoredDataMerged(KEY_SHIPMENTS, initialShipments, 'order_code');
-const getMockExpenses = () => getStoredDataMerged(KEY_EXPENSES, initialExpenses, 'id');
-const getMockCoordinations = () => getStoredDataMerged(KEY_COORDINATIONS, initialCoordinations, 'id');
+const getMockUsers = async () => await getStoredDataMerged(KEY_USERS, initialUsers, 'id');
+const getMockEmployees = async () => await getStoredDataMerged(KEY_EMPLOYEES, initialEmployees, 'employee_id');
+const getMockAttendance = async () => await getStoredDataMerged(KEY_ATTENDANCE, initialAttendance, 'id');
+const getMockShipments = async () => await getStoredDataMerged(KEY_SHIPMENTS, initialShipments, 'order_code');
+const getMockExpenses = async () => await getStoredDataMerged(KEY_EXPENSES, initialExpenses, 'id');
+const getMockCoordinations = async () => await getStoredDataMerged(KEY_COORDINATIONS, initialCoordinations, 'id');
 
-const getMockWorkReports = () => getStoredData(KEY_WORK_REPORTS, [
+const getMockWorkReports = async () => await getStoredData(KEY_WORK_REPORTS, [
   {
     id: 1,
     employee_id: "EMP003",
@@ -78,7 +100,7 @@ const getMockWorkReports = () => getStoredData(KEY_WORK_REPORTS, [
   }
 ]);
 
-const getMockKPIs = () => getStoredData(KEY_KPI, [
+const getMockKPIs = async () => await getStoredData(KEY_KPI, [
   {
     id: 1,
     employee_id: "EMP002",
@@ -130,7 +152,7 @@ const getMockKPIs = () => getStoredData(KEY_KPI, [
 // ============================================================================
 
 export async function login(emailOrUsername, password) {
-  const usersList = getMockUsers();
+  const usersList = await getMockUsers();
   const lowerInput = emailOrUsername.toLowerCase();
   
   const user = usersList.find(
@@ -147,7 +169,7 @@ export async function login(emailOrUsername, password) {
   const updatedUsers = usersList.map(u => 
     u.id === user.id ? { ...u, last_login: new Date().toISOString() } : u
   );
-  saveStoredData(KEY_USERS, updatedUsers);
+  await saveStoredData(KEY_USERS, updatedUsers);
 
   return user;
 }
@@ -156,14 +178,18 @@ export async function login(emailOrUsername, password) {
 // READ OPERATIONS
 // ============================================================================
 
+// ============================================================================
+// READ OPERATIONS
+// ============================================================================
+
 export async function getEmployees(branch) {
-  const list = getMockEmployees();
+  const list = await getMockEmployees();
   if (branch) return list.filter(e => e.branch === branch);
   return list;
 }
 
 export async function getAttendance(branch, date) {
-  let list = getMockAttendance();
+  let list = await getMockAttendance();
   if (branch) list = list.filter(a => a.branch === branch);
   if (date) list = list.filter(a => a.date === date);
   return list;
@@ -171,12 +197,12 @@ export async function getAttendance(branch, date) {
 
 export async function getTodayAttendance(employeeId) {
   const today = new Date().toISOString().split("T")[0];
-  const list = getMockAttendance();
+  const list = await getMockAttendance();
   return list.find(a => a.employee_id === employeeId && a.date === today) || null;
 }
 
 export async function getEmployeeHistory(employeeId, days = 7) {
-  const list = getMockAttendance();
+  const list = await getMockAttendance();
   const limitDate = new Date();
   limitDate.setDate(limitDate.getDate() - days);
   const limitStr = limitDate.toISOString().split("T")[0];
@@ -187,13 +213,13 @@ export async function getEmployeeHistory(employeeId, days = 7) {
 }
 
 export async function getShipments(branch) {
-  const list = getMockShipments();
+  const list = await getMockShipments();
   if (branch) return list.filter(s => s.branch === branch);
   return list;
 }
 
 export async function getDriverShipments(driverId, days = 7) {
-  const list = getMockShipments();
+  const list = await getMockShipments();
   const limitDate = new Date();
   limitDate.setDate(limitDate.getDate() - days);
   const limitStr = limitDate.toISOString().split("T")[0];
@@ -204,18 +230,18 @@ export async function getDriverShipments(driverId, days = 7) {
 }
 
 export async function getExpenses(branch) {
-  const list = getMockExpenses();
+  const list = await getMockExpenses();
   if (branch) return list.filter(e => e.branch === branch);
   return list;
 }
 
 export async function getExpensesByEmployee(employeeId) {
-  const list = getMockExpenses();
+  const list = await getMockExpenses();
   return list.filter(e => e.paid_by_employee_id === employeeId || e.employee_id === employeeId);
 }
 
 export async function getEmployeeExpenses(employeeId, days = 7) {
-  const list = getMockExpenses();
+  const list = await getMockExpenses();
   const limitDate = new Date();
   limitDate.setDate(limitDate.getDate() - days);
   const limitStr = limitDate.toISOString().split("T")[0];
@@ -226,7 +252,7 @@ export async function getEmployeeExpenses(employeeId, days = 7) {
 }
 
 export async function getWorkReports(employeeId, days = 7) {
-  const list = getMockWorkReports();
+  const list = await getMockWorkReports();
   if (!employeeId) return list;
   
   const limitDate = new Date();
@@ -240,12 +266,12 @@ export async function getWorkReports(employeeId, days = 7) {
 
 export async function getCoordinations(branch) {
   // Return all coordinations for mock testing, since hanoi has coordinations by coordinator
-  const list = getMockCoordinations();
+  const list = await getMockCoordinations();
   return list;
 }
 
 export async function getCoordinatorLogs(coordinatorId, days = 7) {
-  const list = getMockCoordinations();
+  const list = await getMockCoordinations();
   const limitDate = new Date();
   limitDate.setDate(limitDate.getDate() - days);
   const limitStr = limitDate.toISOString().split("T")[0];
@@ -256,13 +282,13 @@ export async function getCoordinatorLogs(coordinatorId, days = 7) {
 }
 
 export async function getKPI(branch) {
-  const list = getMockKPIs();
+  const list = await getMockKPIs();
   if (branch) return list.filter(k => k.branch === branch);
   return list;
 }
 
 export async function getKPIByEmployeeMonth(employeeId, month) {
-  const list = getMockKPIs();
+  const list = await getMockKPIs();
   return list.find(k => k.employee_id === employeeId && k.month === month) || null;
 }
 
@@ -271,7 +297,7 @@ export async function getKPIByEmployeeMonth(employeeId, month) {
 // ============================================================================
 
 export async function addAttendance(record) {
-  const list = getMockAttendance();
+  const list = await getMockAttendance();
   const today = new Date().toISOString().split("T")[0];
   
   // Check if check_in or update check_out
@@ -283,7 +309,7 @@ export async function addAttendance(record) {
       ...list[existingIndex],
       check_out: record.check_out || list[existingIndex].check_out
     };
-    saveStoredData(KEY_ATTENDANCE, list);
+    await saveStoredData(KEY_ATTENDANCE, list);
     return list[existingIndex];
   } else {
     // Insert new check_in
@@ -295,24 +321,24 @@ export async function addAttendance(record) {
       ...record
     };
     list.push(newRecord);
-    saveStoredData(KEY_ATTENDANCE, list);
+    await saveStoredData(KEY_ATTENDANCE, list);
     return newRecord;
   }
 }
 
 export async function updateAttendanceCheckout(attendanceId, checkOutTime) {
-  const list = getMockAttendance();
+  const list = await getMockAttendance();
   const index = list.findIndex(a => a.id === parseInt(attendanceId));
   if (index > -1) {
     list[index].check_out = checkOutTime;
-    saveStoredData(KEY_ATTENDANCE, list);
+    await saveStoredData(KEY_ATTENDANCE, list);
     return list[index];
   }
   throw new Error("Attendance record not found");
 }
 
 export async function addShipment(shipment) {
-  const list = getMockShipments();
+  const list = await getMockShipments();
   const newShipment = {
     id: list.length + 1,
     date: new Date().toISOString().split("T")[0],
@@ -327,12 +353,12 @@ export async function addShipment(shipment) {
     ...shipment
   };
   list.push(newShipment);
-  saveStoredData(KEY_SHIPMENTS, list);
+  await saveStoredData(KEY_SHIPMENTS, list);
   return newShipment;
 }
 
 export async function addExpense(expense) {
-  const list = getMockExpenses();
+  const list = await getMockExpenses();
   const newExpense = {
     id: list.length + 1,
     date: expense.date || new Date().toISOString().split("T")[0],
@@ -340,25 +366,25 @@ export async function addExpense(expense) {
     ...expense
   };
   list.push(newExpense);
-  saveStoredData(KEY_EXPENSES, list);
+  await saveStoredData(KEY_EXPENSES, list);
   return newExpense;
 }
 
 export async function approveExpense(id, approvedBy) {
-  const list = getMockExpenses();
+  const list = await getMockExpenses();
   const index = list.findIndex(e => e.id === parseInt(id));
   if (index > -1) {
     list[index].approved = true;
     list[index].approved_by = approvedBy;
     list[index].approved_at = new Date().toISOString();
-    saveStoredData(KEY_EXPENSES, list);
+    await saveStoredData(KEY_EXPENSES, list);
     return list[index];
   }
   throw new Error("Expense record not found");
 }
 
 export async function addWorkReport(report) {
-  const list = getMockWorkReports();
+  const list = await getMockWorkReports();
   const today = new Date().toISOString().split("T")[0];
   
   // Upsert on employee_id + date
@@ -380,12 +406,12 @@ export async function addWorkReport(report) {
     list.push(newReport);
   }
   
-  saveStoredData(KEY_WORK_REPORTS, list);
+  await saveStoredData(KEY_WORK_REPORTS, list);
   return newReport;
 }
 
 export async function addCoordination(coord) {
-  const list = getMockCoordinations();
+  const list = await getMockCoordinations();
   const newCoord = {
     id: list.length + 1,
     date: new Date().toISOString().split("T")[0],
@@ -393,23 +419,23 @@ export async function addCoordination(coord) {
     ...coord
   };
   list.push(newCoord);
-  saveStoredData(KEY_COORDINATIONS, list);
+  await saveStoredData(KEY_COORDINATIONS, list);
   return newCoord;
 }
 
 export async function updateCoordinationStatus(id, status) {
-  const list = getMockCoordinations();
+  const list = await getMockCoordinations();
   const index = list.findIndex(c => c.id === parseInt(id));
   if (index > -1) {
     list[index].status = status;
-    saveStoredData(KEY_COORDINATIONS, list);
+    await saveStoredData(KEY_COORDINATIONS, list);
     return list[index];
   }
   throw new Error("Coordination record not found");
 }
 
 export async function upsertKPI(kpiData) {
-  const list = getMockKPIs();
+  const list = await getMockKPIs();
   const index = list.findIndex(k => k.employee_id === kpiData.employee_id && k.month === kpiData.month);
   
   const record = {
@@ -423,6 +449,6 @@ export async function upsertKPI(kpiData) {
     list.push(record);
   }
 
-  saveStoredData(KEY_KPI, list);
+  await saveStoredData(KEY_KPI, list);
   return record;
 }

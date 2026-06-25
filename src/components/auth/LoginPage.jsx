@@ -83,13 +83,7 @@ export const LoginPage = ({ onLogin, isDbLive, onToggleDbMode }) => {
 
   return (
     <div style={loginStyles.container}>
-      <div style={{
-        ...loginStyles.card,
-        maxWidth: '550px', // slightly wider for double column or role tabs
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)'
-      }}>
+      <div style={loginStyles.card}>
         {/* LOGO */}
         <div style={loginStyles.logo}>
           <span style={{ fontSize: '4.5rem' }}>🚚</span>

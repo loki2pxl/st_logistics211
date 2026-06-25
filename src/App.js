@@ -57,6 +57,15 @@ export default function App() {
     setIsLoading(true);
     try {
       const live = await checkDbConnection();
+      if (enableLive && !live) {
+        const isConnected = localStorage.getItem("st_logistics_db_connected");
+        const hasData = localStorage.getItem("st_logistics_db_has_data");
+        if (isConnected === "false") {
+          alert("❌ Lỗi: Không thể kết nối tới Database của Supabase!\n\nHướng dẫn khắc phục:\n1. Kiểm tra xem bạn đã thêm 2 Environment Variables (REACT_APP_SUPABASE_URL & REACT_APP_SUPABASE_ANON_KEY) vào cài đặt của dự án trên Vercel chưa.\n2. Đảm bảo rằng bạn đã chạy các câu lệnh SQL khởi tạo bảng trong file supabase_schema.sql ở phần SQL Editor của Supabase.");
+        } else if (hasData === "false") {
+          alert("⚠️ Kết nối thành công nhưng Database đang trống!\n\nHướng dẫn khắc phục:\nBạn cần vào SQL Editor trong Supabase và chạy toàn bộ nội dung file supabase_schema.sql để tạo các bảng dữ liệu (như users, shipments) và tạo các tài khoản dùng thử.");
+        }
+      }
       setIsDbLive(live && enableLive);
       // Clear session when switching modes to prevent cache mismatch
       setUser(null);

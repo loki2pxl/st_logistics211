@@ -17,12 +17,22 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('REACT_APP_SUPABASE_ANON_KEY=your-key');
 }
 
-// Khởi tạo Supabase client
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Khởi tạo Supabase client an toàn (tránh crash khi chưa cấu hình Environment Variables)
+const isValidUrl = (url) => {
+  try {
+    return url && url.startsWith('http');
+  } catch (e) {
+    return false;
+  }
+};
+
+const isValidConfig = !!(SUPABASE_URL && SUPABASE_ANON_KEY && isValidUrl(SUPABASE_URL) && !SUPABASE_ANON_KEY.includes('your-') && !SUPABASE_ANON_KEY.startsWith('sb_secret_'));
+
+export const supabase = isValidConfig ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // Kiểm tra kết nối tới Database thực tế
 export const checkDbConnection = async () => {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('your-') || SUPABASE_ANON_KEY.startsWith('sb_secret_')) {
+  if (!supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('your-') || SUPABASE_ANON_KEY.startsWith('sb_secret_')) {
     localStorage.setItem("st_logistics_db_connected", "false");
     localStorage.setItem("st_logistics_db_has_data", "false");
     return false;
@@ -58,6 +68,7 @@ export const checkDbConnection = async () => {
 
 // Hàm kiểm tra xem có sử dụng Live Database hay không
 export const isDatabaseEnabled = () => {
+  if (!supabase) return false;
   const choice = localStorage.getItem("st_logistics_use_live_db");
   if (choice === "false") return false;
   

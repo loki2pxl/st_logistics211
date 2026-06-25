@@ -12,6 +12,7 @@ export * from './shipmentService';
 export * from './expenseService';
 export * from './kpiService';
 export * from './storageService';
+export * from './coordinationService';
 
 // Usage in components:
 // import { getEmployees, getAttendance, login } from '../services';

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(100) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL, -- admin, laixe, bocxep, vanphong
+    role VARCHAR(50) NOT NULL, -- admin, laixe, bocxep, vanphong, giaonhan
     name VARCHAR(255) NOT NULL,
     branch VARCHAR(50) NOT NULL, -- hanoi, saigon
     employee_id VARCHAR(50) UNIQUE,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS employees (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     employee_id VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL, -- laixe, bocxep, vanphong
+    role VARCHAR(50) NOT NULL, -- laixe, bocxep, vanphong, giaonhan
     branch VARCHAR(50) NOT NULL, -- hanoi, saigon
     status VARCHAR(50) DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     id SERIAL PRIMARY KEY,
     employee_id VARCHAR(50) NOT NULL,
     employee_name VARCHAR(255) NOT NULL,
-    "group" VARCHAR(50) NOT NULL, -- laixe, bocxep, vanphong
+    "group" VARCHAR(50) NOT NULL, -- laixe, bocxep, vanphong, giaonhan
     branch VARCHAR(50) NOT NULL,
     date DATE NOT NULL,
     check_in VARCHAR(10) NOT NULL,
@@ -61,8 +61,10 @@ CREATE TABLE IF NOT EXISTS shipments (
     to_location VARCHAR(255),
     distance_km NUMERIC(10, 2) DEFAULT 0.00,
     work_days NUMERIC(5, 2) DEFAULT 1.00,
-    price NUMERIC(15, 2) DEFAULT 0.00,
+    price NUMERIC(15, 2) DEFAULT 0.00,       -- Phí vận chuyển
     total_price NUMERIC(15, 2) DEFAULT 0.00,
+    oil_charge NUMERIC(15, 2) DEFAULT 0.00,    -- Phí đổ dầu/xăng
+    toll_gate_fee NUMERIC(15, 2) DEFAULT 0.00, -- Phí cầu đường
     vehicle VARCHAR(50) DEFAULT 'truck',
     payment_status VARCHAR(50) DEFAULT 'unpaid',
     notes TEXT,
@@ -106,7 +108,31 @@ CREATE TABLE IF NOT EXISTS work_reports (
     CONSTRAINT unique_loader_date UNIQUE (employee_id, date)
 );
 
--- 8. KPI & SALARY TABLE
+-- 8. COORDINATIONS TABLE (For Deliverers / GiaoNhan / Caretakers)
+CREATE TABLE IF NOT EXISTS coordinations (
+    id SERIAL PRIMARY KEY,
+    order_code VARCHAR(100) UNIQUE NOT NULL,
+    customer_name VARCHAR(255) NOT NULL,
+    customer_phone VARCHAR(50) NOT NULL,
+    delivery_address TEXT NOT NULL,
+    product_type VARCHAR(255) NOT NULL, -- khăn mặt, cần câu cá, xe đạp...
+    package_count INTEGER DEFAULT 0,    -- số bao hàng
+    container_no VARCHAR(100),          -- số container
+    wagon_no VARCHAR(100),              -- toa hàng
+    train_no VARCHAR(100),              -- số tàu
+    driver_id VARCHAR(50),
+    driver_name VARCHAR(255),
+    vehicle_plate VARCHAR(50),
+    cargo_weight NUMERIC(10, 2) DEFAULT 0.00,
+    fees_due NUMERIC(15, 2) DEFAULT 0.00, -- số tiền thu hộ/còn nợ
+    coordinator_id VARCHAR(50) NOT NULL,
+    coordinator_name VARCHAR(255) NOT NULL,
+    date DATE NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending', -- pending, shipping, delivered
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. KPI & SALARY TABLE
 CREATE TABLE IF NOT EXISTS kpi (
     id SERIAL PRIMARY KEY,
     employee_id VARCHAR(50) NOT NULL,
@@ -142,17 +168,22 @@ INSERT INTO users (username, email, password, role, name, branch, employee_id) V
 ('vanphong1', 'vanphong1@st.com', '123456', 'vanphong', 'Lê Văn Office', 'hanoi', 'EMP004')
 ON CONFLICT (username) DO NOTHING;
 
+INSERT INTO users (username, email, password, role, name, branch, employee_id) VALUES
+('giaonhan1', 'giaonhan1@st.com', '123456', 'giaonhan', 'Phạm Văn Giao Nhận', 'hanoi', 'EMP005')
+ON CONFLICT (username) DO NOTHING;
+
 -- Seed Employees
 INSERT INTO employees (employee_id, name, role, branch, status) VALUES
 ('EMP002', 'Nguyễn Văn Tài', 'laixe', 'hanoi', 'active'),
 ('EMP003', 'Trần Thị Kho', 'bocxep', 'hanoi', 'active'),
-('EMP004', 'Lê Văn Office', 'vanphong', 'hanoi', 'active')
+('EMP004', 'Lê Văn Office', 'vanphong', 'hanoi', 'active'),
+('EMP005', 'Phạm Văn Giao Nhận', 'giaonhan', 'hanoi', 'active')
 ON CONFLICT (employee_id) DO NOTHING;
 
 -- Seed Shipments (DH/ORD)
-INSERT INTO shipments (order_code, customer, date, status, branch, driver_id, driver_name, vehicle_plate, from_location, to_location, distance_km, total_price) VALUES
-('DH-2026-001', 'Coca Cola Vietnam', '2026-06-24', 'delivered', 'hanoi', 'EMP002', 'Nguyễn Văn Tài', 'VN-29A-12345', 'Kho Hà Nội', 'Cảng Hải Phòng', 120.00, 5000000.00),
-('DH-2026-002', 'Unilever Vietnam', '2026-06-25', 'shipping', 'hanoi', 'EMP002', 'Nguyễn Văn Tài', 'VN-29A-12345', 'Kho Hà Nội', 'Bắc Ninh', 45.00, 2200000.00)
+INSERT INTO shipments (order_code, customer, date, status, branch, driver_id, driver_name, vehicle_plate, from_location, to_location, distance_km, price, total_price, oil_charge, toll_gate_fee) VALUES
+('DH-2026-001', 'Coca Cola Vietnam', '2026-06-24', 'delivered', 'hanoi', 'EMP002', 'Nguyễn Văn Tài', 'VN-29A-12345', 'Kho Hà Nội', 'Cảng Hải Phòng', 120.00, 4200000.00, 5000000.00, 600000.00, 200000.00),
+('DH-2026-002', 'Unilever Vietnam', '2026-06-25', 'shipping', 'hanoi', 'EMP002', 'Nguyễn Văn Tài', 'VN-29A-12345', 'Kho Hà Nội', 'Bắc Ninh', 45.00, 1800000.00, 2200000.00, 300000.00, 100000.00)
 ON CONFLICT (order_code) DO NOTHING;
 
 -- Seed Expenses
@@ -165,7 +196,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO attendance (employee_id, employee_name, "group", branch, date, check_in, check_out) VALUES
 ('EMP002', 'Nguyễn Văn Tài', 'laixe', 'hanoi', '2026-06-24', '08:00', '17:30'),
 ('EMP003', 'Trần Thị Kho', 'bocxep', 'hanoi', '2026-06-24', '08:15', '17:00'),
-('EMP004', 'Lê Văn Office', 'vanphong', 'hanoi', '2026-06-24', '08:00', '17:00')
+('EMP004', 'Lê Văn Office', 'vanphong', 'hanoi', '2026-06-24', '08:00', '17:00'),
+('EMP005', 'Phạm Văn Giao Nhận', 'giaonhan', 'hanoi', '2026-06-24', '08:00', '17:05')
 ON CONFLICT (employee_id, date) DO NOTHING;
 
 -- Seed Loaders reports
@@ -173,9 +205,16 @@ INSERT INTO work_reports (employee_id, employee_name, branch, date, container_co
 ('EMP003', 'Trần Thị Kho', 'hanoi', '2026-06-24', 4, 25.50, 'Hàng tiêu dùng', 'Kho B')
 ON CONFLICT (employee_id, date) DO NOTHING;
 
+-- Seed Coordinations
+INSERT INTO coordinations (order_code, customer_name, customer_phone, delivery_address, product_type, package_count, container_no, wagon_no, train_no, driver_id, driver_name, vehicle_plate, cargo_weight, fees_due, coordinator_id, coordinator_name, date, status) VALUES
+('DH-2026-003', 'Điện máy Hải Nam', '0912345678', '456 Nguyễn Văn Cừ, Long Biên, Hà Nội', 'xe đạp', 30, 'CONT-NS77', 'TOA-04', 'TÀU-HN9', 'EMP002', 'Nguyễn Văn Tài', 'VN-29A-12345', 0.80, 2400000.00, 'EMP005', 'Phạm Văn Giao Nhận', '2026-06-24', 'shipping'),
+('DH-2026-004', 'Bách hóa Thanh Vy', '0988777666', '78 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 'khăn mặt', 200, 'CONT-NS89', 'TOA-12', 'TÀU-HN9', NULL, NULL, NULL, 0.40, 1200000.00, 'EMP005', 'Phạm Văn Giao Nhận', '2026-06-25', 'pending')
+ON CONFLICT (order_code) DO NOTHING;
+
 -- Seed KPIs
 INSERT INTO kpi (employee_id, branch, month, score, base_salary, bonus, deductions, notes) VALUES
 ('EMP002', 'hanoi', '2026-06', 95.00, 12000000.00, 1500000.00, 200000.00, 'Chuyến đi an toàn, đúng giờ'),
 ('EMP003', 'hanoi', '2026-06', 90.00, 9000000.00, 800000.00, 0.00, 'Làm việc năng suất tốt'),
-('EMP004', 'hanoi', '2026-06', 100.00, 10000000.00, 1200000.00, 0.00, 'Báo cáo chi phí và sổ sách chính xác')
+('EMP004', 'hanoi', '2026-06', 100.00, 10000000.00, 1200000.00, 0.00, 'Báo cáo chi phí và sổ sách chính xác'),
+('EMP005', 'hanoi', '2026-06', 95.00, 11000000.00, 1000000.00, 0.00, 'Điều phối tàu và xe đúng lịch')
 ON CONFLICT (employee_id, month) DO NOTHING;

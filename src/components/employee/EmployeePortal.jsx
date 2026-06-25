@@ -12,6 +12,7 @@ import "../../styles/global.css";
 import BocXepPortal from "../portals/bocxep";
 import LaiXePortal from "../portals/laixe";
 import VanPhongPortal from "../portals/vanphong";
+import GiaoNhanPortal from "../portals/giaonhan";
 
 export function EmployeePortal({ user, onLogout, isDbLive, onToggleDbMode }) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -138,7 +139,8 @@ export function EmployeePortal({ user, onLogout, isDbLive, onToggleDbMode }) {
     const rolesMap = {
       laixe: { label: '🚛 Lái Xe Vận Tải', color: '#2563eb', bg: '#eff6ff' },
       bocxep: { label: '📦 Xếp Dỡ Kho Bãi', color: '#d97706', bg: '#fffbeb' },
-      vanphong: { label: '💼 Văn Phòng Điều Phối', color: '#7e22ce', bg: '#f5f3ff' },
+      vanphong: { label: '💼 Văn Phòng Điều Phối', color: '#0891b2', bg: '#ecfeff' },
+      giaonhan: { label: '🤝 Giao Nhận Đường Sắt', color: '#0d9488', bg: '#f0fdf4' },
       admin: { label: '👔 Quản Lý Hệ Thống', color: '#0f172a', bg: '#f1f5f9' }
     };
     return rolesMap[role] || { label: role, color: '#475569', bg: '#f1f5f9' };
@@ -156,6 +158,8 @@ export function EmployeePortal({ user, onLogout, isDbLive, onToggleDbMode }) {
         return <BocXepPortal {...props} />;
       case 'vanphong':
         return <VanPhongPortal {...props} />;
+      case 'giaonhan':
+        return <GiaoNhanPortal {...props} />;
       default:
         return (
           <div style={{ padding: '50px', textAlign: 'center' }} className="card">

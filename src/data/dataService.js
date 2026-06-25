@@ -1,6 +1,6 @@
 // src/data/dataService.js
 // ============================================================================
-// MOCK DATA SERVICE WITH LOCAL STORAGE SYNCHRONIZATION
+// MOCK DATA SERVICE WITH COORDINATIONS & LOCAL STORAGE SYNCHRONIZATION
 // ============================================================================
 
 import {
@@ -8,7 +8,8 @@ import {
   mockEmployees as initialEmployees,
   mockAttendance as initialAttendance,
   mockShipments as initialShipments,
-  mockExpenses as initialExpenses
+  mockExpenses as initialExpenses,
+  mockCoordinations as initialCoordinations
 } from "./mockData";
 
 // LocalStorage Keys
@@ -18,6 +19,7 @@ const KEY_ATTENDANCE = "st_logistics_attendance";
 const KEY_SHIPMENTS = "st_logistics_shipments";
 const KEY_EXPENSES = "st_logistics_expenses";
 const KEY_WORK_REPORTS = "st_logistics_work_reports";
+const KEY_COORDINATIONS = "st_logistics_coordinations";
 const KEY_KPI = "st_logistics_kpi";
 
 // Helper to load or initialize
@@ -39,12 +41,27 @@ const saveStoredData = (key, data) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
+// Helper to auto-merge initial seed elements if they are missing from LocalStorage (cache prevention)
+const getStoredDataMerged = (key, defaultValue, idField = 'id') => {
+  const stored = getStoredData(key, defaultValue);
+  if (!Array.isArray(stored)) return stored;
+  const storedIds = new Set(stored.map(item => item && item[idField]));
+  const missing = defaultValue.filter(item => !storedIds.has(item[idField]));
+  if (missing.length > 0) {
+    const updated = [...stored, ...missing];
+    saveStoredData(key, updated);
+    return updated;
+  }
+  return stored;
+};
+
 // Initialize Mock database in LocalStorage
-const getMockUsers = () => getStoredData(KEY_USERS, initialUsers);
-const getMockEmployees = () => getStoredData(KEY_EMPLOYEES, initialEmployees);
-const getMockAttendance = () => getStoredData(KEY_ATTENDANCE, initialAttendance);
-const getMockShipments = () => getStoredData(KEY_SHIPMENTS, initialShipments);
-const getMockExpenses = () => getStoredData(KEY_EXPENSES, initialExpenses);
+const getMockUsers = () => getStoredDataMerged(KEY_USERS, initialUsers, 'id');
+const getMockEmployees = () => getStoredDataMerged(KEY_EMPLOYEES, initialEmployees, 'employee_id');
+const getMockAttendance = () => getStoredDataMerged(KEY_ATTENDANCE, initialAttendance, 'id');
+const getMockShipments = () => getStoredDataMerged(KEY_SHIPMENTS, initialShipments, 'order_code');
+const getMockExpenses = () => getStoredDataMerged(KEY_EXPENSES, initialExpenses, 'id');
+const getMockCoordinations = () => getStoredDataMerged(KEY_COORDINATIONS, initialCoordinations, 'id');
 
 const getMockWorkReports = () => getStoredData(KEY_WORK_REPORTS, [
   {
@@ -94,6 +111,17 @@ const getMockKPIs = () => getStoredData(KEY_KPI, [
     bonus: 1200000,
     deductions: 0,
     notes: "Báo cáo chi phí chính xác"
+  },
+  {
+    id: 4,
+    employee_id: "EMP005",
+    branch: "hanoi",
+    month: "2026-06",
+    score: 95,
+    base_salary: 11000000,
+    bonus: 1000000,
+    deductions: 0,
+    notes: "Điều phối toa hàng đúng hạn"
   }
 ]);
 
@@ -210,6 +238,23 @@ export async function getWorkReports(employeeId, days = 7) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
+export async function getCoordinations(branch) {
+  // Return all coordinations for mock testing, since hanoi has coordinations by coordinator
+  const list = getMockCoordinations();
+  return list;
+}
+
+export async function getCoordinatorLogs(coordinatorId, days = 7) {
+  const list = getMockCoordinations();
+  const limitDate = new Date();
+  limitDate.setDate(limitDate.getDate() - days);
+  const limitStr = limitDate.toISOString().split("T")[0];
+
+  return list
+    .filter(c => c.coordinator_id === coordinatorId && c.date >= limitStr)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
 export async function getKPI(branch) {
   const list = getMockKPIs();
   if (branch) return list.filter(k => k.branch === branch);
@@ -275,6 +320,8 @@ export async function addShipment(shipment) {
     work_days: 1,
     price: shipment.price || shipment.total_price || 0,
     total_price: shipment.total_price || shipment.price || 0,
+    oil_charge: shipment.oil_charge || 0,
+    toll_gate_fee: shipment.toll_gate_fee || 0,
     vehicle: "truck",
     payment_status: "unpaid",
     ...shipment
@@ -335,6 +382,30 @@ export async function addWorkReport(report) {
   
   saveStoredData(KEY_WORK_REPORTS, list);
   return newReport;
+}
+
+export async function addCoordination(coord) {
+  const list = getMockCoordinations();
+  const newCoord = {
+    id: list.length + 1,
+    date: new Date().toISOString().split("T")[0],
+    status: "pending",
+    ...coord
+  };
+  list.push(newCoord);
+  saveStoredData(KEY_COORDINATIONS, list);
+  return newCoord;
+}
+
+export async function updateCoordinationStatus(id, status) {
+  const list = getMockCoordinations();
+  const index = list.findIndex(c => c.id === parseInt(id));
+  if (index > -1) {
+    list[index].status = status;
+    saveStoredData(KEY_COORDINATIONS, list);
+    return list[index];
+  }
+  throw new Error("Coordination record not found");
 }
 
 export async function upsertKPI(kpiData) {

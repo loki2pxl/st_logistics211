@@ -9,6 +9,7 @@ import shipmentService from "../../services/shipmentService";
 import expenseService from "../../services/expenseService";
 import employeeService from "../../services/employeeService";
 import kpiService from "../../services/kpiService";
+import coordinationService from "../../services/coordinationService";
 import "../../styles/global.css";
 
 export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
@@ -22,9 +23,10 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
   const [employees, setEmployees] = useState([]);
   const [kpis, setKpis] = useState([]);
   const [workReports, setWorkReports] = useState([]);
+  const [coordinations, setCoordinations] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Branch Selector
+  // Load dashboard data
   const [currentBranch, setCurrentBranch] = useState(user.branch || "hanoi");
 
   // KPI Edit Form States
@@ -42,13 +44,14 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
     try {
       setLoading(true);
       // Fetch all records
-      const [empList, attList, shipList, expList, kpiList, wrList] = await Promise.all([
+      const [empList, attList, shipList, expList, kpiList, wrList, coordList] = await Promise.all([
         employeeService.getEmployees(currentBranch),
         attendanceService.getAttendanceByBranch(currentBranch, new Date().toISOString().split('T')[0]),
         shipmentService.getShipments(currentBranch),
         expenseService.getExpenses(currentBranch),
         kpiService.getKPI(currentBranch),
-        employeeService.getWorkReports(null, 30) // fetch loading logs for the month
+        employeeService.getWorkReports(null, 30), // fetch loading logs for the month
+        coordinationService.getCoordinations(currentBranch)
       ]);
 
       setEmployees(empList || []);
@@ -57,6 +60,7 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
       setExpenses(expList || []);
       setKpis(kpiList || []);
       setWorkReports(wrList || []);
+      setCoordinations(coordList || []);
     } catch (err) {
       console.error("Error loading manager analytics data:", err);
     } finally {
@@ -82,6 +86,19 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
     }
   };
 
+  // Handle Coordination Status Update
+  const handleUpdateCoordStatus = async (coordId, newStatus) => {
+    try {
+      setLoading(true);
+      await coordinationService.updateStatus(coordId, newStatus);
+      alert("✅ Đã cập nhật trạng thái điều phối thành công!");
+      await loadDashboardData();
+    } catch (err) {
+      alert("❌ Lỗi cập nhật trạng thái: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   // Open KPI Editor
   const handleEditKpi = (emp) => {
     // Find if KPI already exists for this employee for '2026-06'
@@ -126,6 +143,12 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
   };
 
   // Calculations
+  const employeeIdsInBranch = new Set(employees.map(emp => emp.employee_id));
+  const branchCoordinations = coordinations.filter(c => 
+    employeeIdsInBranch.has(c.coordinator_id) || 
+    (c.driver_id && employeeIdsInBranch.has(c.driver_id))
+  );
+
   const totalRevenue = shipments
     .filter(s => s.status === 'delivered')
     .reduce((sum, item) => sum + (item.total_price || item.price || 0), 0);
@@ -134,6 +157,9 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
     .filter(e => e.approved) // Approved expenses only
     .reduce((sum, item) => sum + (item.amount || 0), 0);
 
+  const totalFeesDue = branchCoordinations
+    .reduce((sum, item) => sum + (parseFloat(item.fees_due) || 0), 0);
+
   const pendingExpensesCount = expenses.filter(e => !e.approved).length;
 
   const getRoleLabel = (role) => {
@@ -141,6 +167,7 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
       laixe: '🚛 Lái Xe',
       bocxep: '📦 Bốc Xếp',
       vanphong: '💼 Văn Phòng',
+      giaonhan: '🛤️ Giao Nhận',
       admin: '👔 Quản Lý'
     };
     return rolesMap[role] || role;
@@ -160,7 +187,7 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
       <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
           <div className="logo-section" style={{ marginBottom: '2.5rem' }}>
-            <h2 style={{ letterSpacing: '2px', fontFamily: 'Bebas Neue, sans-serif', color: 'white', margin: 0 }}>
+            <h2 style={{ letterSpacing: '1px', fontFamily: 'Arial, sans-serif', fontWeight: '900', color: 'white', margin: 0 }}>
               LOGISTICS HUB
             </h2>
             <small style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -175,6 +202,12 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
                 onClick={() => setActiveMenu('overview')}
               >
                 📊 Tổng Quan & Phân Tích
+              </li>
+              <li 
+                className={`nav-item ${activeMenu === 'coordination' ? 'active' : ''}`}
+                onClick={() => setActiveMenu('coordination')}
+              >
+                🛤️ Điều Phối Giao Nhận
               </li>
               <li 
                 className={`nav-item ${activeMenu === 'approvals' ? 'active' : ''}`}
@@ -312,35 +345,45 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
             
             {/* Financial Overview Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
               <div className="card" style={{ borderLeft: '6px solid #10b981' }}>
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
                   Tổng Doanh Thu Hóa Đơn
                 </span>
-                <h2 style={{ fontSize: '2.2rem', color: '#10b981', fontWeight: 'bold', margin: '10px 0' }}>
+                <h2 style={{ fontSize: '2.0rem', color: '#10b981', fontWeight: 'bold', margin: '10px 0' }}>
                   {totalRevenue.toLocaleString()} ₫
                 </h2>
-                <small style={{ color: '#64748b' }}>Tính trên các đơn hàng đã hoàn thành giao</small>
+                <small style={{ color: '#64748b' }}>Đơn hàng đã giao thành công</small>
               </div>
 
               <div className="card" style={{ borderLeft: '6px solid #ef4444' }}>
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                  Tổng Chi Phí Hoạt Động (Đã Duyệt)
+                  Tổng Chi Phí Hoạt Động
                 </span>
-                <h2 style={{ fontSize: '2.2rem', color: '#ef4444', fontWeight: 'bold', margin: '10px 0' }}>
+                <h2 style={{ fontSize: '2.0rem', color: '#ef4444', fontWeight: 'bold', margin: '10px 0' }}>
                   -{totalExpenses.toLocaleString()} ₫
                 </h2>
-                <small style={{ color: '#64748b' }}>Chi phí xăng xe, mua sắm vật dụng đã thanh toán</small>
+                <small style={{ color: '#64748b' }}>Chi phí vận hành đã duyệt chi</small>
               </div>
 
-              <div className="card" style={{ borderLeft: '6px solid #3b82f6', background: 'linear-gradient(to right, #ffffff, #eff6ff)' }}>
+              <div className="card" style={{ borderLeft: '6px solid #f59e0b' }}>
+                <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  Công Nợ Giao Nhận (Chưa Thu)
+                </span>
+                <h2 style={{ fontSize: '2.0rem', color: '#d97706', fontWeight: 'bold', margin: '10px 0' }}>
+                  {totalFeesDue.toLocaleString()} ₫
+                </h2>
+                <small style={{ color: '#64748b' }}>Phí thu hộ từ tổ điều phối</small>
+              </div>
+
+              <div className="card" style={{ borderLeft: '6px solid #2563eb', background: 'linear-gradient(to right, #ffffff, #eff6ff)' }}>
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
                   Lợi Nhuận Thuần Chi Nhánh
                 </span>
-                <h2 style={{ fontSize: '2.2rem', color: '#2563eb', fontWeight: 'bold', margin: '10px 0' }}>
+                <h2 style={{ fontSize: '2.0rem', color: '#2563eb', fontWeight: 'bold', margin: '10px 0' }}>
                   {(totalRevenue - totalExpenses).toLocaleString()} ₫
                 </h2>
-                <small style={{ color: '#64748b' }}>Lợi nhuận gộp sau khi trừ chi phí vận hành</small>
+                <small style={{ color: '#64748b' }}>Doanh thu trừ chi phí hoạt động</small>
               </div>
             </div>
 
@@ -426,6 +469,209 @@ export function AdminDashboard({ user, onLogout, isDbLive, onToggleDbMode }) {
 
             </div>
 
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------
+            MENU TỔ ĐIỀU PHỐI GIAO NHẬN
+            ------------------------------------------------------------------ */}
+        {activeMenu === 'coordination' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+            {/* Coordination Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+              <div className="card" style={{ borderLeft: '4px solid #0d9488', padding: '15px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  Số Đơn Vận Chuyển Toa Tàu
+                </span>
+                <h3 style={{ fontSize: '1.8rem', color: '#0d9488', margin: '5px 0', fontWeight: 'bold' }}>
+                  {branchCoordinations.length} đơn
+                </h3>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #2563eb', padding: '15px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  Tổng Khối Lượng Vận Tải
+                </span>
+                <h3 style={{ fontSize: '1.8rem', color: '#2563eb', margin: '5px 0', fontWeight: 'bold' }}>
+                  {branchCoordinations.reduce((sum, c) => sum + (parseFloat(c.cargo_weight) || 0), 0).toFixed(2)} tấn
+                </h3>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #10b981', padding: '15px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  Tổng Số Bao Hàng Xếp Dỡ
+                </span>
+                <h3 style={{ fontSize: '1.8rem', color: '#10b981', margin: '5px 0', fontWeight: 'bold' }}>
+                  {branchCoordinations.reduce((sum, c) => sum + (parseInt(c.package_count) || 0), 0)} bao
+                </h3>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #f59e0b', padding: '15px' }}>
+                <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  Tổng Cước Phí Phải Thu
+                </span>
+                <h3 style={{ fontSize: '1.8rem', color: '#d97706', margin: '5px 0', fontWeight: 'bold' }}>
+                  {totalFeesDue.toLocaleString()} ₫
+                </h3>
+              </div>
+            </div>
+
+            {/* Cargo Analysis by Product Type */}
+            <div className="card">
+              <h3 style={{ color: '#1e1b4b', marginBottom: '15px', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                📦 Phân Tích Cơ Cấu Mặt Hàng Vận Chuyển
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                {Object.keys(
+                  branchCoordinations.reduce((acc, curr) => {
+                    const pType = curr.product_type || "Khác";
+                    if (!acc[pType]) acc[pType] = { count: 0, packages: 0, weight: 0 };
+                    acc[pType].count += 1;
+                    acc[pType].packages += parseInt(curr.package_count) || 0;
+                    acc[pType].weight += parseFloat(curr.cargo_weight) || 0;
+                    return acc;
+                  }, {})
+                ).length === 0 ? (
+                  <div style={{ color: '#94a3b8', fontStyle: 'italic', padding: '10px' }}>Không có dữ liệu mặt hàng.</div>
+                ) : (
+                  Object.entries(
+                    branchCoordinations.reduce((acc, curr) => {
+                      const pType = curr.product_type || "Khác";
+                      if (!acc[pType]) acc[pType] = { count: 0, packages: 0, weight: 0 };
+                      acc[pType].count += 1;
+                      acc[pType].packages += parseInt(curr.package_count) || 0;
+                      acc[pType].weight += parseFloat(curr.cargo_weight) || 0;
+                      return acc;
+                    }, {})
+                  ).map(([name, data]) => {
+                    const getProductIcon = (type) => {
+                      const lower = (type || "").toLowerCase();
+                      if (lower.includes("khăn")) return "🧻";
+                      if (lower.includes("xe đạp") || lower.includes("đạp")) return "🚲";
+                      if (lower.includes("cần") || lower.includes("câu")) return "🎣";
+                      return "📦";
+                    };
+                    return (
+                      <div key={name} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
+                        <div style={{ fontWeight: 'bold', color: '#1e293b', textTransform: 'capitalize', fontSize: '0.95rem' }}>
+                          {getProductIcon(name)} {name}
+                        </div>
+                        <div style={{ marginTop: '8px', fontSize: '0.85rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span>• Số chuyến gom: <strong>{data.count}</strong></span>
+                          <span>• Sản lượng: <strong>{data.packages} bao</strong></span>
+                          <span>• Trọng lượng: <strong>{data.weight.toFixed(2)} tấn</strong></span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Shipments Table */}
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ color: '#1e1b4b', margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  🛤️ Nhật Ký Trung Chuyển Toa Hàng Đường Sắt Hàng Ngày
+                </h3>
+              </div>
+              
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                      <th style={{ padding: '10px' }}>Mã Đơn / Ngày</th>
+                      <th style={{ padding: '10px' }}>Toa Tàu / Container</th>
+                      <th style={{ padding: '10px' }}>Khách Hàng / ĐT</th>
+                      <th style={{ padding: '10px' }}>Địa Chỉ Giao Hàng</th>
+                      <th style={{ padding: '10px' }}>Loại Hàng / Sản Lượng</th>
+                      <th style={{ padding: '10px' }}>Lái Xe Nhận Hàng</th>
+                      <th style={{ padding: '10px', textAlign: 'right' }}>Cước Cần Thu</th>
+                      <th style={{ padding: '10px', textAlign: 'center' }}>Trạng Thái</th>
+                      <th style={{ padding: '10px', textAlign: 'center' }}>Hành Động</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {branchCoordinations.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>
+                          Chưa có đơn hàng trung chuyển nào được ghi nhận tại chi nhánh này
+                        </td>
+                      </tr>
+                    ) : (
+                      branchCoordinations.map((c, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ fontWeight: 'bold' }}>{c.order_code}</div>
+                            <small style={{ color: '#64748b' }}>{c.date}</small>
+                          </td>
+                          <td style={{ padding: '10px' }}>
+                            {c.train_no && c.wagon_no ? (
+                              <div>{c.train_no} - {c.wagon_no}</div>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Không có toa tàu</span>
+                            )}
+                            <small style={{ color: '#475569', display: 'block' }}>Cont: {c.container_no || 'N/A'}</small>
+                          </td>
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ fontWeight: 'bold' }}>{c.customer_name}</div>
+                            <small style={{ color: '#64748b' }}>{c.customer_phone}</small>
+                          </td>
+                          <td style={{ padding: '10px', fontSize: '0.85rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.delivery_address}>
+                            {c.delivery_address}
+                          </td>
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ textTransform: 'capitalize', fontWeight: '500' }}>{c.product_type}</div>
+                            <small style={{ color: '#64748b' }}>{c.package_count} bao ({c.cargo_weight} tấn)</small>
+                          </td>
+                          <td style={{ padding: '10px' }}>
+                            {c.driver_name ? (
+                              <div>
+                                <span style={{ fontWeight: '500' }}>{c.driver_name}</span>
+                                <small style={{ color: '#64748b', display: 'block' }}>{c.vehicle_plate}</small>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#ef4444', fontStyle: 'italic', fontSize: '0.85rem' }}>⚠️ Chưa chỉ định lái xe</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold', color: '#b45309' }}>
+                            {(parseFloat(c.fees_due) || 0).toLocaleString()} ₫
+                          </td>
+                          <td style={{ padding: '10px', textAlign: 'center' }}>
+                            <span style={{
+                              padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold',
+                              background: c.status === 'delivered' ? '#dcfce7' : c.status === 'shipping' ? '#eff6ff' : '#fef9c3',
+                              color: c.status === 'delivered' ? '#15803d' : c.status === 'shipping' ? '#1d4ed8' : '#a16207'
+                            }}>
+                              {c.status === 'delivered' ? 'Đã Giao' : c.status === 'shipping' ? 'Đang Đi' : 'Chờ Giao'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px', textAlign: 'center' }}>
+                            {c.status !== 'delivered' && (
+                              <select
+                                value={c.status}
+                                onChange={(e) => handleUpdateCoordStatus(c.id, e.target.value)}
+                                style={{
+                                  padding: '4px 6px',
+                                  fontSize: '0.8rem',
+                                  borderRadius: '4px',
+                                  border: '1px solid #cbd5e1',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <option value="pending">Chờ Giao</option>
+                                <option value="shipping">Đang Đi</option>
+                                <option value="delivered">Đã Giao</option>
+                              </select>
+                            )}
+                            {c.status === 'delivered' && (
+                              <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>✓ Hoàn tất</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

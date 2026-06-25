@@ -23,6 +23,9 @@ export default function LaiXePortal({ user, onLogout, embedded }) {
     from_location: '',
     to_location: '',
     distance_km: '',
+    price: '',
+    oil_charge: '',
+    toll_gate_fee: '',
     fuel_liters: '',
     fuel_cost: '',
     delivery_status: 'shipping',
@@ -136,6 +139,10 @@ export default function LaiXePortal({ user, onLogout, embedded }) {
         from_location: tripReport.from_location,
         to_location: tripReport.to_location,
         distance_km: parseFloat(tripReport.distance_km) || 0,
+        price: parseFloat(tripReport.price) || 0,
+        total_price: parseFloat(tripReport.price) || 0,
+        oil_charge: parseFloat(tripReport.oil_charge) || 0,
+        toll_gate_fee: parseFloat(tripReport.toll_gate_fee) || 0,
         delivery_status: tripReport.delivery_status,
         notes: tripReport.notes,
       });
@@ -161,6 +168,9 @@ export default function LaiXePortal({ user, onLogout, embedded }) {
         from_location: '',
         to_location: '',
         distance_km: '',
+        price: '',
+        oil_charge: '',
+        toll_gate_fee: '',
         fuel_liters: '',
         fuel_cost: '',
         delivery_status: 'shipping',
@@ -351,6 +361,42 @@ export default function LaiXePortal({ user, onLogout, embedded }) {
             </div>
 
             <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Giá cước vận chuyển (VNĐ)</label>
+              <input
+                type="number"
+                value={tripReport.price}
+                onChange={(e) => setTripReport({...tripReport, price: e.target.value})}
+                min="0"
+                placeholder="Ví dụ: 3000000"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Phí đổ dầu xe (VNĐ)</label>
+              <input
+                type="number"
+                value={tripReport.oil_charge}
+                onChange={(e) => setTripReport({...tripReport, oil_charge: e.target.value})}
+                min="0"
+                placeholder="Ví dụ: 500000"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Phí cầu đường/BOT (VNĐ)</label>
+              <input
+                type="number"
+                value={tripReport.toll_gate_fee}
+                onChange={(e) => setTripReport({...tripReport, toll_gate_fee: e.target.value})}
+                min="0"
+                placeholder="Ví dụ: 150000"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="form-group">
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '0.9rem' }}>Trạng thái giao hàng</label>
               <select
                 value={tripReport.delivery_status}
@@ -431,14 +477,16 @@ export default function LaiXePortal({ user, onLogout, embedded }) {
                 <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>MÃ ĐƠN</th>
                 <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>TUYẾN ĐƯỜNG</th>
                 <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>SỐ KM</th>
-                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>CHI PHÍ XĂNG</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>GIÁ CƯỚC</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>ĐỔ DẦU</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>PHÍ BOT</th>
                 <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>TRẠNG THÁI</th>
               </tr>
             </thead>
             <tbody>
               {tripHistory.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>
+                  <td colSpan="8" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>
                     Chưa có chuyến đi nào
                   </td>
                 </tr>
@@ -451,8 +499,14 @@ export default function LaiXePortal({ user, onLogout, embedded }) {
                       {trip.from_location} → {trip.to_location}
                     </td>
                     <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>{trip.distance_km} km</td>
-                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>
-                      {trip.fuel_cost > 0 ? <strong>₫ {trip.fuel_cost.toLocaleString()}</strong> : '-'}
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#10b981', fontWeight: 'bold' }}>
+                      {trip.price > 0 ? `₫ ${trip.price.toLocaleString()}` : '-'}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#d97706', fontWeight: 'bold' }}>
+                      {trip.oil_charge > 0 ? `₫ ${trip.oil_charge.toLocaleString()}` : '-'}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#64748b' }}>
+                      {trip.toll_gate_fee > 0 ? `₫ ${trip.toll_gate_fee.toLocaleString()}` : '-'}
                     </td>
                     <td style={{ padding: '12px' }}>
                       <span style={{

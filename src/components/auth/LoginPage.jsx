@@ -17,28 +17,34 @@ export const LoginPage = ({ onLogin, isDbLive, onToggleDbMode }) => {
   // Test accounts mapped by functions and company levels
   const testAccounts = {
     admin: {
-      label: '👔 Ban Giám Đốc (Quản Lý)',
+      label: '👔 Ban Giám Đốc (Quản Lý Cấp Cao)',
       email: 'admin@st.com',
       password: 'admin123',
       desc: 'Toàn quyền điều hành, duyệt chi phí, theo dõi KPI & hiệu suất vận hành.'
     },
     laixe: {
-      label: '🚛 Tổ Lái Xe (Vận Tải)',
+      label: '🚛 Tổ Lái Xe (Vận Tải Cấp Trung)',
       email: 'laixe1@st.com',
       password: '123456',
-      desc: 'Nhập thông tin chuyến đi (km, tuyến đường), hóa đơn & chi phí xăng dầu.'
+      desc: 'Nhập thông tin chuyến đi (km, tuyến đường), giá cước, phụ phí và đổ dầu.'
     },
     bocxep: {
-      label: '📦 Tổ Bốc Xếp (Kho Bãi)',
+      label: '📦 Tổ Bốc Xếp (Kho Bãi Thực Thi)',
       email: 'bocxep1@st.com',
       password: '123456',
       desc: 'Nhập số lượng container, trọng lượng hàng hóa xếp dỡ và khu vực kho.'
     },
     vanphong: {
-      label: '💼 Tổ Văn Phòng (Kế Toán)',
+      label: '💼 Tổ Văn Phòng (Điều Phối & Kế Toán)',
       email: 'vanphong1@st.com',
       password: '123456',
       desc: 'Xuất hóa đơn, xử lý hồ sơ hành chính, nhập chi phí văn phòng tổng hợp.'
+    },
+    giaonhan: {
+      label: '🤝 Tổ Giao Nhận (Quản Lý & Điều Phối Tuyến)',
+      email: 'giaonhan1@st.com',
+      password: '123456',
+      desc: 'Điều phối hàng đường sắt trung chuyển tới khách, lưu thông số tàu, toa, bao hàng.'
     }
   };
 
@@ -158,7 +164,7 @@ export const LoginPage = ({ onLogin, isDbLive, onToggleDbMode }) => {
         </form>
 
         {/* ROLE-BASED QUICK LOGIN ASSISTANT */}
-        <div style={{ marginTop: '2.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+        <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
           <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             ⚡ Chọn tài khoản dùng thử nhanh:
           </p>
@@ -168,14 +174,15 @@ export const LoginPage = ({ onLogin, isDbLive, onToggleDbMode }) => {
             {Object.keys(testAccounts).map((key) => (
               <button
                 key={key}
+                type="button"
                 onClick={() => handleSelectTestAccount(key)}
                 style={{
                   padding: '8px 10px',
                   borderRadius: '8px',
                   border: '1px solid',
-                  borderColor: selectedRoleTab === key ? '#6366f1' : '#e2e8f0',
-                  background: selectedRoleTab === key ? '#f5f3ff' : 'white',
-                  color: selectedRoleTab === key ? '#6366f1' : '#475569',
+                  borderColor: selectedRoleTab === key ? '#2563eb' : '#e2e8f0',
+                  background: selectedRoleTab === key ? '#eff6ff' : 'white',
+                  color: selectedRoleTab === key ? '#2563eb' : '#475569',
                   fontWeight: 'bold',
                   fontSize: '0.8rem',
                   cursor: 'pointer',
@@ -183,7 +190,7 @@ export const LoginPage = ({ onLogin, isDbLive, onToggleDbMode }) => {
                   transition: 'all 0.2s'
                 }}
               >
-                {key === 'admin' ? '👔 Quản Lý' : key === 'laixe' ? '🚛 Lái Xe' : key === 'bocxep' ? '📦 Bốc Xếp' : '💼 Văn Phòng'}
+                {key === 'admin' ? '👔 Quản Lý' : key === 'laixe' ? '🚛 Lái Xe' : key === 'bocxep' ? '📦 Bốc Xếp' : key === 'vanphong' ? '💼 Văn Phòng' : '🤝 Giao Nhận'}
               </button>
             ))}
           </div>

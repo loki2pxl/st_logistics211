@@ -1,6 +1,6 @@
 // src/components/auth/LoginPage.styles.js
 // ============================================================================
-// LOGIN PAGE STYLES
+// LOGIN PAGE STYLES - Corporate Minimal Blue Theme
 // ============================================================================
 
 export const loginStyles = {
@@ -9,38 +9,43 @@ export const loginStyles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%)',
+    background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%)',
     padding: '2rem',
+    fontFamily: 'Arial, sans-serif'
   },
   card: {
     background: 'white',
-    borderRadius: '2rem',
-    padding: '3rem',
+    borderRadius: '12px',
+    padding: '2.5rem 3rem',
     maxWidth: '450px',
     width: '100%',
-    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+    border: '1px solid rgba(255, 255, 255, 0.1)'
   },
   logo: {
     textAlign: 'center',
-    marginBottom: '2rem',
+    marginBottom: '1.75rem',
   },
   title: {
-    fontFamily: 'Bebas Neue, sans-serif',
-    fontSize: '2.5rem',
-    marginTop: '1rem',
-    marginBottom: '0.5rem',
-    background: 'linear-gradient(135deg, #1e3c72 0%, #7e22ce 100%)',
+    fontFamily: 'Arial, Helvetica, sans-serif',
+    fontSize: '2.2rem',
+    fontWeight: 'bold',
+    marginTop: '0.75rem',
+    marginBottom: '0.25rem',
+    background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
+    letterSpacing: '1px'
   },
   subtitle: {
     color: '#64748b',
-    fontSize: '1rem',
+    fontSize: '0.9rem',
+    fontWeight: 'normal'
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.5rem',
+    gap: '1.25rem',
   },
   formGroup: {
     display: 'flex',
@@ -48,45 +53,47 @@ export const loginStyles = {
     gap: '0.5rem',
   },
   label: {
-    fontWeight: 700,
-    fontSize: '0.95rem',
-    color: '#0f172a',
+    fontWeight: 'bold',
+    fontSize: '0.85rem',
+    color: '#334155',
   },
   input: {
-    padding: '1rem',
-    border: '2px solid #e2e8f0',
-    borderRadius: '0.75rem',
-    fontSize: '1rem',
-    fontFamily: 'Outfit, sans-serif',
-    transition: 'all 0.3s ease',
+    padding: '0.75rem 1rem',
+    border: '1.5px solid #cbd5e1',
+    borderRadius: '8px',
+    fontSize: '0.95rem',
+    fontFamily: 'Arial, sans-serif',
+    outline: 'none',
+    transition: 'all 0.2s ease',
   },
   button: {
-    padding: '1rem',
-    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+    padding: '0.85rem',
+    background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
     color: 'white',
     border: 'none',
-    borderRadius: '0.75rem',
-    fontSize: '1.1rem',
-    fontWeight: 700,
+    borderRadius: '8px',
+    fontSize: '1rem',
+    fontWeight: 'bold',
     cursor: 'pointer',
-    fontFamily: 'Outfit, sans-serif',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)',
+    fontFamily: 'Arial, sans-serif',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
   },
   error: {
-    padding: '1rem',
-    background: 'rgba(239, 68, 68, 0.1)',
-    color: '#ef4444',
-    borderRadius: '0.75rem',
-    fontSize: '0.95rem',
-    fontWeight: 600,
+    padding: '0.75rem 1rem',
+    background: 'rgba(239, 68, 68, 0.08)',
+    color: '#dc2626',
+    borderRadius: '8px',
+    fontSize: '0.85rem',
+    fontWeight: 'bold',
+    border: '1px solid rgba(239, 68, 68, 0.15)'
   },
   hint: {
-    padding: '1rem',
+    padding: '0.75rem 1rem',
     background: '#f8fafc',
-    borderRadius: '0.75rem',
-    fontSize: '0.85rem',
+    borderRadius: '8px',
+    fontSize: '0.8rem',
     color: '#64748b',
-    lineHeight: 1.6,
+    lineHeight: 1.5,
   },
 };

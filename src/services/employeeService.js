@@ -1,37 +1,66 @@
 // src/services/employeeService.js
-import { supabase } from '../config/supabase';
+// ============================================================================
+// EMPLOYEE SERVICE WITH MOCK FALLBACK
+// ============================================================================
+
+import { supabase, isDatabaseEnabled } from '../config/supabase';
+import * as mockService from '../data/dataService';
 
 /**
  * Get all employees for a branch
  */
 export const getEmployees = async (branch) => {
-  const { data, error } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('branch', branch);
-  
-  if (error) throw error;
-  return data || [];
+  if (!isDatabaseEnabled()) {
+    return mockService.getEmployees(branch);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('branch', branch);
+    
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn("Live DB getEmployees failed, falling back to mock:", err.message);
+    return mockService.getEmployees(branch);
+  }
 };
 
 /**
  * Get employee by ID
  */
 export const getEmployeeById = async (id) => {
-  const { data, error } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('id', id)
-    .single();
-  
-  if (error) throw error;
-  return data;
+  if (!isDatabaseEnabled()) {
+    const list = await mockService.getEmployees();
+    return list.find(emp => emp.id === id || emp.employee_id === id) || null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.warn("Live DB getEmployeeById failed, falling back to mock:", err.message);
+    const list = await mockService.getEmployees();
+    return list.find(emp => emp.id === id || emp.employee_id === id) || null;
+  }
 };
 
 /**
  * Create new employee
  */
 export const createEmployee = async (employeeData) => {
+  if (!isDatabaseEnabled()) {
+    throw new Error("Tạo nhân viên mới chưa hỗ trợ ở chế độ Demo.");
+  }
+
   const { data, error } = await supabase
     .from('employees')
     .insert([employeeData])
@@ -46,6 +75,10 @@ export const createEmployee = async (employeeData) => {
  * Update employee
  */
 export const updateEmployee = async (id, employeeData) => {
+  if (!isDatabaseEnabled()) {
+    throw new Error("Cập nhật nhân viên chưa hỗ trợ ở chế độ Demo.");
+  }
+
   const { data, error } = await supabase
     .from('employees')
     .update(employeeData)
@@ -61,6 +94,10 @@ export const updateEmployee = async (id, employeeData) => {
  * Delete employee
  */
 export const deleteEmployee = async (id) => {
+  if (!isDatabaseEnabled()) {
+    throw new Error("Xóa nhân viên chưa hỗ trợ ở chế độ Demo.");
+  }
+
   const { error } = await supabase
     .from('employees')
     .delete()
@@ -78,48 +115,66 @@ export const deleteEmployee = async (id) => {
  * Get work reports for an employee
  */
 export const getWorkReports = async (employeeId, days = 7) => {
-  const fromDate = new Date();
-  fromDate.setDate(fromDate.getDate() - days);
+  if (!isDatabaseEnabled()) {
+    return mockService.getWorkReports(employeeId, days);
+  }
 
-  const { data, error } = await supabase
-    .from('work_reports')
-    .select('*')
-    .eq('employee_id', employeeId)
-    .gte('date', fromDate.toISOString().split('T')[0])
-    .order('date', { ascending: false });
+  try {
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
 
-  if (error) throw error;
-  return data || [];
+    const { data, error } = await supabase
+      .from('work_reports')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .gte('date', fromDate.toISOString().split('T')[0])
+      .order('date', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn("Live DB getWorkReports failed, falling back to mock:", err.message);
+    return mockService.getWorkReports(employeeId, days);
+  }
 };
 
 /**
  * Submit work report
  */
 export const submitWorkReport = async (reportData) => {
-  const today = new Date().toISOString().split('T')[0];
+  if (!isDatabaseEnabled()) {
+    return mockService.addWorkReport(reportData);
+  }
 
-  const { data, error } = await supabase
-    .from('work_reports')
-    .upsert([
-      {
-        employee_id: reportData.employee_id,
-        employee_name: reportData.employee_name,
-        branch: reportData.branch,
-        date: today,
-        container_count: parseInt(reportData.container_count) || 0,
-        total_weight: parseFloat(reportData.total_weight) || 0,
-        cargo_type: reportData.cargo_type || null,
-        work_area: reportData.work_area || null,
-        notes: reportData.notes || null,
-      }
-    ], {
-      onConflict: 'employee_id,date'
-    })
-    .select()
-    .single();
+  try {
+    const today = new Date().toISOString().split('T')[0];
 
-  if (error) throw error;
-  return data;
+    const { data, error } = await supabase
+      .from('work_reports')
+      .upsert([
+        {
+          employee_id: reportData.employee_id,
+          employee_name: reportData.employee_name,
+          branch: reportData.branch,
+          date: today,
+          container_count: parseInt(reportData.container_count) || 0,
+          total_weight: parseFloat(reportData.total_weight) || 0,
+          cargo_type: reportData.cargo_type || null,
+          work_area: reportData.work_area || null,
+          notes: reportData.notes || null,
+        }
+      ], {
+        onConflict: 'employee_id,date'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.warn("Live DB submitWorkReport failed, falling back to mock:", err.message);
+    return mockService.addWorkReport(reportData);
+  }
 };
 
 const employeeService = {

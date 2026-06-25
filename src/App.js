@@ -1,101 +1,124 @@
 // src/App.js
 // ============================================================================
-// MAIN APPLICATION - Logistics Hub Central Router
+// MAIN APPLICATION ROUTER - Logistics Hub
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
-
-// Components - Matching your folder structure
 import { LoginPage } from './components/auth/LoginPage';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { EmployeePortal } from './components/employee/EmployeePortal';
-
-// Services & Data
-import * as mockService from './data/dataService'; // Handles both .js and .ts
-import { saveSession, clearSession, isAdmin, getSession } from './services/authService';
-
+import { checkDbConnection, isDatabaseEnabled, setDatabaseMode } from './config/supabase';
+import { getSession, saveSession, clearSession, isAdmin } from './services/authService';
 import './styles/global.css';
-
-// ⚡ THE MASTER TOGGLE
-// Set to 'true' to use your mockData.js and bypass login for testing
-const USE_MOCK_DATA = true;
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDbLive, setIsDbLive] = useState(false);
+
+  // Initialize DB check and session loader
+  const initializeApp = async () => {
+    setIsLoading(true);
+    try {
+      const live = await checkDbConnection();
+      setIsDbLive(live && isDatabaseEnabled());
+      
+      const savedUser = getSession();
+      if (savedUser) {
+        setUser(savedUser);
+      }
+    } catch (err) {
+      console.error("Initialization error:", err);
+    } finally {
+      // Small artificial delay to show premium loader
+      setTimeout(() => setIsLoading(false), 1200);
+    }
+  };
 
   useEffect(() => {
-    const initializeApp = () => {
-      setIsLoading(true);
-      
-      if (USE_MOCK_DATA) {
-        // Automatically bypass login for fast dev testing
-        const devUser = {
-          name: "Nguyễn Văn Admin",
-          role: "admin",
-          branch: "hanoi",
-          employee_id: "EMP001" // String ID format matches your dashboards
-        };
-        setUser(devUser);
-      } else {
-        // Real session check logic for production
-        const saved = getSession(); 
-        if(saved) setUser(saved);
-      }
-      
-      // Artificial delay to show the branding loader
-      setTimeout(() => setIsLoading(false), 1000);
-    };
-
     initializeApp();
   }, []);
 
   // Centralized login handler
-  const handleLogin = async (email, password) => {
-    try {
-      let userData;
-      if (USE_MOCK_DATA) {
-        userData = await mockService.login(email, password);
-      } else {
-        throw new Error("Vui lòng kết nối cơ sở dữ liệu Supabase.");
-      }
-      
-      setUser(userData);
-      saveSession(userData);
-    } catch (err) {
-      throw err; 
-    }
+  const handleLogin = (userData) => {
+    setUser(userData);
+    saveSession(userData);
   };
 
+  // Centralized logout handler
   const handleLogout = () => {
     setUser(null);
     clearSession();
   };
 
-  // 1. Brand Loading Screen
+  // Toggle Database Connection Mode dynamically
+  const handleToggleDbMode = async (enableLive) => {
+    setDatabaseMode(enableLive);
+    setIsLoading(true);
+    try {
+      const live = await checkDbConnection();
+      setIsDbLive(live && enableLive);
+      // Clear session when switching modes to prevent cache mismatch
+      setUser(null);
+      clearSession();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 1. Premium Brand Loader Screen
   if (isLoading) {
     return (
-      <div className="loading-screen">
-        <div className="loader-content text-center">
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '3rem', letterSpacing: '4px' }}>
+      <div className="loading-screen" style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+        color: 'white',
+        flexDirection: 'column',
+        fontFamily: 'Outfit, sans-serif'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '1rem', animation: 'pulse 1.5s infinite' }}>🚛</div>
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '3rem', letterSpacing: '4px', margin: 0 }}>
             LOGISTICS HUB
           </h1>
-          <p style={{ opacity: 0.8, marginTop: '10px' }}>Đang khởi động hệ thống quản lý...</p>
+          <p style={{ opacity: 0.6, marginTop: '10px', fontSize: '1rem' }}>
+            Đang tải hệ thống quản lý thông minh...
+          </p>
         </div>
       </div>
     );
   }
 
-  // 2. Authentication Route
+  // 2. Authentication View
   if (!user) {
-    return <LoginPage onLogin={handleLogin} />;
+    return (
+      <LoginPage 
+        onLogin={handleLogin} 
+        isDbLive={isDbLive} 
+        onToggleDbMode={handleToggleDbMode} 
+      />
+    );
   }
 
-  // 3. Dashboard Routing
-  // Checks user.role to decide which dashboard to render
+  // 3. User Dashboard Routing
   return isAdmin(user) ? (
-    <AdminDashboard user={user} onLogout={handleLogout} />
+    <AdminDashboard 
+      user={user} 
+      onLogout={handleLogout} 
+      isDbLive={isDbLive} 
+      onToggleDbMode={handleToggleDbMode}
+    />
   ) : (
-    <EmployeePortal user={user} onLogout={handleLogout} />
+    <EmployeePortal 
+      user={user} 
+      onLogout={handleLogout} 
+      isDbLive={isDbLive}
+      onToggleDbMode={handleToggleDbMode}
+    />
   );
 }

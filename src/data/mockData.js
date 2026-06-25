@@ -1,131 +1,185 @@
+// src/data/mockData.js
+// ============================================================================
+// MOCK DATA SYSTEM - Seed credentials & profiles
+// ============================================================================
+
 export const users = [
   {
-    id: 1,
-    email: "admin@test.com",
+    id: "admin-1",
+    email: "admin@st.com",
+    username: "admin",
     password: "admin123",
     role: "admin",
-    name: "Test Admin"
+    name: "Nguyễn Văn Admin",
+    branch: "hanoi",
+    employee_id: "EMP001"
   },
   {
-    id: 2,
-    email: "user@test.com",
-    password: "user123",
-    role: "user",
-    name: "Test User"
-  }
-]
-
-export const posts = [
-  {
-    id: 1,
-    title: "Test Post",
-    content: "This is mock content"
-  }
-]
-
-export const mockUsers = {
-  admin: {
-    id: 1,
-    name: "Admin Test",
-    role: "admin",
-    branch: "hanoi"
-  },
-
-  driver: {
-    id: 2,
-    employee_id: 2,
-    name: "Nguyen Van Tai",
-    role: "lai-xe",
-    branch: "hanoi"
-  },
-
-  warehouse: {
-    id: 3,
-    employee_id: 3,
-    name: "Tran Thi Kho",
-    role: "boc-xep",
-    branch: "hanoi"
-  },
-
-  office: {
-    id: 4,
-    employee_id: 4,
-    name: "Le Van Office",
-    role: "van-phong",
-    branch: "hanoi"
-  }
-};
-export const mockEmployees = [
-  {
-    id: 1,
-    name: "Nguyen Van Tai",
-    role: "lai-xe",
-    branch: "hanoi"
+    id: "laixe-1",
+    email: "laixe1@st.com",
+    username: "laixe1",
+    password: "123456",
+    role: "laixe",
+    name: "Nguyễn Văn Tài",
+    branch: "hanoi",
+    employee_id: "EMP002"
   },
   {
-    id: 2,
-    name: "Tran Thi Kho",
-    role: "boc-xep",
-    branch: "hanoi"
+    id: "bocxep-1",
+    email: "bocxep1@st.com",
+    username: "bocxep1",
+    password: "123456",
+    role: "bocxep",
+    name: "Trần Thị Kho",
+    branch: "hanoi",
+    employee_id: "EMP003"
   },
   {
-    id: 3,
-    name: "Le Van Office",
-    role: "van-phong",
-    branch: "hanoi"
+    id: "vanphong-1",
+    email: "vanphong1@st.com",
+    username: "vanphong1",
+    password: "123456",
+    role: "vanphong",
+    name: "Lê Văn Office",
+    branch: "hanoi",
+    employee_id: "EMP004"
   }
 ];
+
+export const mockUsers = {
+  admin: users[0],
+  driver: users[1],
+  warehouse: users[2],
+  office: users[3]
+};
+
+export const mockEmployees = [
+  {
+    id: "emp-2",
+    employee_id: "EMP002",
+    name: "Nguyễn Văn Tài",
+    role: "laixe",
+    branch: "hanoi",
+    status: "active"
+  },
+  {
+    id: "emp-3",
+    employee_id: "EMP003",
+    name: "Trần Thị Kho",
+    role: "bocxep",
+    branch: "hanoi",
+    status: "active"
+  },
+  {
+    id: "emp-4",
+    employee_id: "EMP004",
+    name: "Lê Văn Office",
+    role: "vanphong",
+    branch: "hanoi",
+    status: "active"
+  }
+];
+
 export const mockAttendance = [
   {
     id: 1,
-    employee_id: 2,
-    employee_name: "Nguyen Van Tai",
-    date: "2026-03-06",
+    employee_id: "EMP002",
+    employee_name: "Nguyễn Văn Tài",
+    group: "laixe",
+    branch: "hanoi",
+    date: "2026-06-24",
     check_in: "08:00",
     check_out: "17:30"
   },
   {
     id: 2,
-    employee_id: 3,
-    employee_name: "Tran Thi Kho",
-    date: "2026-03-06",
+    employee_id: "EMP003",
+    employee_name: "Trần Thị Kho",
+    group: "bocxep",
+    branch: "hanoi",
+    date: "2026-06-24",
     check_in: "08:15",
-    check_out: null
+    check_out: "17:00"
+  },
+  {
+    id: 3,
+    employee_id: "EMP004",
+    employee_name: "Lê Văn Office",
+    group: "vanphong",
+    branch: "hanoi",
+    date: "2026-06-24",
+    check_in: "08:00",
+    check_out: "17:00"
   }
 ];
+
 export const mockShipments = [
   {
     id: 1,
-    order_code: "ORD001",
+    order_code: "DH-2026-001",
     customer: "Coca Cola Vietnam",
-    date: "2026-03-06",
-    status: "pending",
-    branch: "hanoi"
+    date: "2026-06-24",
+    status: "delivered",
+    branch: "hanoi",
+    driver_id: "EMP002",
+    driver_name: "Nguyễn Văn Tài",
+    vehicle_plate: "VN-29A-12345",
+    from_location: "Kho Hà Nội",
+    to_location: "Cảng Hải Phòng",
+    distance_km: 120,
+    total_price: 5000000,
+    price: 5000000,
+    vehicle: "truck",
+    payment_status: "paid"
   },
   {
     id: 2,
-    order_code: "ORD002",
-    customer: "Unilever",
-    date: "2026-03-05",
+    order_code: "DH-2026-002",
+    customer: "Unilever Vietnam",
+    date: "2026-06-25",
     status: "shipping",
-    branch: "hanoi"
+    branch: "hanoi",
+    driver_id: "EMP002",
+    driver_name: "Nguyễn Văn Tài",
+    vehicle_plate: "VN-29A-12345",
+    from_location: "Kho Hà Nội",
+    to_location: "Bắc Ninh",
+    distance_km: 45,
+    total_price: 2200000,
+    price: 2200000,
+    vehicle: "truck",
+    payment_status: "unpaid"
   }
 ];
+
 export const mockExpenses = [
   {
     id: 1,
-    date: "2026-03-05",
+    employee_id: "EMP002",
+    paid_by: "Nguyễn Văn Tài",
+    paid_by_employee_id: "EMP002",
+    branch: "hanoi",
+    date: "2026-06-24",
     type: "fuel",
-    amount: 500000,
-    description: "Đổ xăng xe tải",
-    paid_by: "Nguyen Van Tai"
+    amount: 800000,
+    description: "Đổ xăng dầu đi Hải Phòng",
+    fuel_liters: 40,
+    vehicle_plate: "VN-29A-12345",
+    order_code: "DH-2026-001",
+    approved: true,
+    approved_by: "Nguyễn Văn Admin",
+    approved_at: "2026-06-24T18:00:00Z"
   },
   {
     id: 2,
-    date: "2026-03-04",
+    employee_id: "EMP003",
+    paid_by: "Trần Thị Kho",
+    paid_by_employee_id: "EMP003",
+    branch: "hanoi",
+    date: "2026-06-24",
     type: "warehouse",
-    amount: 200000,
-    description: "Mua pallet",
-    paid_by: "Tran Thi Kho"
+    amount: 350000,
+    description: "Mua găng tay bảo hộ lao động",
+    approved: false
   }
 ];

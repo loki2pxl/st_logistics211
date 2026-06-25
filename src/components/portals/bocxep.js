@@ -7,7 +7,7 @@ import attendanceService from "../../services/attendanceService";
 import employeeService from "../../services/employeeService";
 import "../../styles/global.css";
 
-export default function BocXepPortal({ user, onLogout }) {
+export default function BocXepPortal({ user, onLogout, embedded }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [workHistory, setWorkHistory] = useState([]);
@@ -137,60 +137,64 @@ export default function BocXepPortal({ user, onLogout }) {
     <div className="portal-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '2rem' }}>
       
       {/* Header */}
-      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ color: '#1e293b', margin: 0 }}>📦 Nhập Liệu - Nhóm Bốc Xếp</h3>
-        <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
-          Nhân viên: <strong>{user?.name}</strong>
+      {!embedded && (
+        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ color: '#1e293b', margin: 0 }}>📦 Nhập Liệu - Nhóm Bốc Xếp</h3>
+          <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            Nhân viên: <strong>{user?.name}</strong>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Chấm công */}
-      <div className="card" style={{ background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)', color: 'white', border: 'none' }}>
-        <h3 style={{ margin: '0 0 1rem 0' }}>⏰ Chấm Công Nhanh</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-          
-          <div style={{ background: 'rgba(255,255,255,0.15)', padding: '1.5rem', borderRadius: '12px' }}>
-            <span style={{ opacity: 0.9, fontSize: '0.9rem' }}>Thời gian hiện tại</span>
-            <h2 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: 'bold', fontFamily: 'monospace' }}>
-              {currentTime.toLocaleTimeString('vi-VN')}
-            </h2>
-            <button 
-              onClick={handleCheckIn}
-              disabled={loading || todayAttendance}
-              style={{ 
-                width: '100%', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', 
-                cursor: todayAttendance ? 'not-allowed' : 'pointer',
-                background: todayAttendance ? 'rgba(255,255,255,0.3)' : 'white', 
-                color: todayAttendance ? 'rgba(255,255,255,0.7)' : '#8b5cf6' 
-              }}
-            >
-              ✓ Check In
-            </button>
-          </div>
+      {!embedded && (
+        <div className="card" style={{ background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)', color: 'white', border: 'none' }}>
+          <h3 style={{ margin: '0 0 1rem 0' }}>⏰ Chấm Công Nhanh</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            
+            <div style={{ background: 'rgba(255,255,255,0.15)', padding: '1.5rem', borderRadius: '12px' }}>
+              <span style={{ opacity: 0.9, fontSize: '0.9rem' }}>Thời gian hiện tại</span>
+              <h2 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                {currentTime.toLocaleTimeString('vi-VN')}
+              </h2>
+              <button 
+                onClick={handleCheckIn}
+                disabled={loading || todayAttendance}
+                style={{ 
+                  width: '100%', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', 
+                  cursor: todayAttendance ? 'not-allowed' : 'pointer',
+                  background: todayAttendance ? 'rgba(255,255,255,0.3)' : 'white', 
+                  color: todayAttendance ? 'rgba(255,255,255,0.7)' : '#8b5cf6' 
+                }}
+              >
+                ✓ Check In
+              </button>
+            </div>
 
-          <div style={{ background: 'rgba(255,255,255,0.15)', padding: '1.5rem', borderRadius: '12px' }}>
-            <span style={{ opacity: 0.9, fontSize: '0.9rem' }}>Trạng thái hôm nay</span>
-            <h2 style={{ fontSize: '1.5rem', margin: '1rem 0', fontWeight: 'bold' }}>
-              {todayAttendance ? (
-                todayAttendance.check_out ? 'Đã hoàn thành' : `Đã check-in: ${todayAttendance.check_in}`
-              ) : 'Chưa check in'}
-            </h2>
-            <button 
-              onClick={handleCheckOut}
-              disabled={loading || !todayAttendance || todayAttendance?.check_out}
-              style={{ 
-                width: '100%', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', 
-                cursor: (!todayAttendance || todayAttendance?.check_out) ? 'not-allowed' : 'pointer',
-                background: (!todayAttendance || todayAttendance?.check_out) ? 'rgba(255,255,255,0.2)' : 'white', 
-                color: (!todayAttendance || todayAttendance?.check_out) ? 'rgba(255,255,255,0.5)' : '#8b5cf6' 
-              }}
-            >
-              ✗ Check Out
-            </button>
-          </div>
+            <div style={{ background: 'rgba(255,255,255,0.15)', padding: '1.5rem', borderRadius: '12px' }}>
+              <span style={{ opacity: 0.9, fontSize: '0.9rem' }}>Trạng thái hôm nay</span>
+              <h2 style={{ fontSize: '1.5rem', margin: '1rem 0', fontWeight: 'bold' }}>
+                {todayAttendance ? (
+                  todayAttendance.check_out ? 'Đã hoàn thành' : `Đã check-in: ${todayAttendance.check_in}`
+                ) : 'Chưa check in'}
+              </h2>
+              <button 
+                onClick={handleCheckOut}
+                disabled={loading || !todayAttendance || todayAttendance?.check_out}
+                style={{ 
+                  width: '100%', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', 
+                  cursor: (!todayAttendance || todayAttendance?.check_out) ? 'not-allowed' : 'pointer',
+                  background: (!todayAttendance || todayAttendance?.check_out) ? 'rgba(255,255,255,0.2)' : 'white', 
+                  color: (!todayAttendance || todayAttendance?.check_out) ? 'rgba(255,255,255,0.5)' : '#8b5cf6' 
+                }}
+              >
+                ✗ Check Out
+              </button>
+            </div>
 
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Báo cáo công việc */}
       <div className="card">

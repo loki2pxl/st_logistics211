@@ -224,7 +224,10 @@ export const createDriverTrip = async (tripData) => {
           notes: tripData.notes,
           customer: tripData.customer || 'Khách hàng lẻ',
           work_days: 1,
-          price: 0,
+          price: tripData.price || 0,
+          total_price: tripData.total_price || tripData.price || 0,
+          oil_charge: tripData.oil_charge || 0,
+          toll_gate_fee: tripData.toll_gate_fee || 0,
           vehicle: 'truck',
           payment_status: 'unpaid',
         }

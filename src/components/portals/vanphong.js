@@ -12,6 +12,7 @@ export default function VanPhongPortal({ user, onLogout, embedded }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [expenseHistory, setExpenseHistory] = useState([]);
+  const [branchExpenses, setBranchExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
@@ -57,6 +58,9 @@ export default function VanPhongPortal({ user, onLogout, embedded }) {
     try {
       const data = await expenseService.getExpensesByEmployee(user.employee_id);
       setExpenseHistory(data.slice(0, 10) || []); // Last 10 expenses
+
+      const branchData = await expenseService.getExpenses(user.branch);
+      setBranchExpenses(branchData || []);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -435,7 +439,7 @@ export default function VanPhongPortal({ user, onLogout, embedded }) {
 
       {/* Lịch sử chi phí */}
       <div className="card">
-        <h3 style={{ color: '#1e293b', marginBottom: '1.5rem' }}>📊 Lịch Sử Chi Phí Gần Đây</h3>
+        <h3 style={{ color: '#1e293b', marginBottom: '1.5rem' }}>📊 Lịch Sử Chi Phí Cá Nhân</h3>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -465,6 +469,74 @@ export default function VanPhongPortal({ user, onLogout, embedded }) {
                     <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>{expense.paid_by}</td>
                     <td style={{ padding: '12px', fontSize: '0.95rem', color: '#64748b' }}>
                       {expense.description || '-'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Sổ chi phí chi nhánh cho kế toán */}
+      <div className="card">
+        <h3 style={{ color: '#1e293b', marginBottom: '1.5rem' }}>📊 Sổ Theo Dõi Toàn Bộ Chi Phí Chi Nhánh</h3>
+        <p style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '-1rem', marginBottom: '1.5rem' }}>
+          Xem và đối chiếu hóa đơn xăng xe do lái xe tải lên và chi phí vận hành khác.
+        </p>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc' }}>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>NGÀY</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>NHÂN VIÊN</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>LOẠI CHI PHÍ</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>SỐ TIỀN</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>HÓA ĐƠN / CHỨNG TỪ</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '700', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>TRẠNG THÁI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {branchExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>
+                    Chưa ghi nhận chi phí nào tại chi nhánh
+                  </td>
+                </tr>
+              ) : (
+                branchExpenses.map((expense, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>{formatDate(expense.date)}</td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', fontWeight: 'bold', color: '#1e293b' }}>{expense.paid_by || 'Nhân viên'}</td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b' }}>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold',
+                        background: expense.type === 'fuel' ? '#eff6ff' : '#f1f5f9',
+                        color: expense.type === 'fuel' ? '#2563eb' : '#475569'
+                      }}>
+                        {getExpenseTypeLabel(expense.type)}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem', color: '#1e293b', fontWeight: 'bold' }}>
+                      {formatCurrency(expense.amount)}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.95rem' }}>
+                      {expense.invoice_urls && expense.invoice_urls.length > 0 ? (
+                        <a href={expense.invoice_urls[0]} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'none' }}>
+                          📄 Xem hóa đơn
+                        </a>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.8rem' }}>Không có</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={{
+                        padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold',
+                        background: expense.approved ? '#dcfce7' : '#fffbeb',
+                        color: expense.approved ? '#15803d' : '#b45309'
+                      }}>
+                        {expense.approved ? 'Đã duyệt chi' : 'Chờ duyệt'}
+                      </span>
                     </td>
                   </tr>
                 ))

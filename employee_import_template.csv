@@ -1,0 +1,6 @@
+Mã Nhân Viên (Employee ID),Họ Tên (Full Name),Vai Trò (Role),Chi Nhánh (Branch),Tên Đăng Nhập (Username),Email Đăng Nhập (Email),Mật Khẩu Ban Đầu (Password),Biển Số Xe (Vehicle Plate - Lái xe),Số Điện Thoại (Phone Number)
+EMP001,Nguyễn Văn Tài,laixe,hanoi,laixe1,laixe1@st.com,123456,29A-123.45,0912345678
+EMP002,Trần Thị Bốc Xếp,bocxep,hanoi,bocxep1,bocxep1@st.com,123456,,0987654321
+EMP003,Phạm Văn Giao Nhận,giaonhan,saigon,giaonhan1,giaonhan1@st.com,123456,,0901234567
+EMP004,Lê Văn Văn Phòng,vanphong,saigon,vanphong1,vanphong1@st.com,123456,,0955566677
+EMP005,Nguyễn Hoàng Quản Lý,admin,hanoi,admin,admin@st.com,admin123,,0933333333

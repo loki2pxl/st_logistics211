@@ -63,11 +63,22 @@ export const LoginPage = ({ onLogin, isDbLive, onToggleDbMode }) => {
     }
   };
 
-  // Auto-fill selected test account credentials
-  const handleSelectTestAccount = (roleKey) => {
+  // Auto-fill and instantly log in (no manual login button click required)
+  const handleSelectTestAccount = async (roleKey) => {
     setSelectedRoleTab(roleKey);
     setUsernameOrEmail(testAccounts[roleKey].email);
     setPassword(testAccounts[roleKey].password);
+    
+    setError('');
+    setLoading(true);
+    try {
+      const userData = await login(testAccounts[roleKey].email, testAccounts[roleKey].password);
+      onLogin(userData);
+    } catch (err) {
+      setError(err.message || 'Đăng nhập dùng thử thất bại. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

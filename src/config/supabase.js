@@ -23,18 +23,35 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Kiểm tra kết nối tới Database thực tế
 export const checkDbConnection = async () => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('your-') || SUPABASE_ANON_KEY.startsWith('sb_secret_')) {
+    localStorage.setItem("st_logistics_db_connected", "false");
+    localStorage.setItem("st_logistics_db_has_data", "false");
     return false;
   }
   try {
-    // Thử truy vấn một bảng bất kỳ (ví dụ 'users') để xác minh kết nối
-    const { error } = await supabase.from('users').select('id').limit(1);
+    // Thử truy vấn một bảng bất kỳ (ví dụ 'users') để xác minh kết nối và kiểm tra dữ liệu
+    const { data, error } = await supabase.from('users').select('id').limit(1);
     if (error) {
       console.warn("⚠️ Kết nối database thất bại:", error.message);
+      localStorage.setItem("st_logistics_db_connected", "false");
+      localStorage.setItem("st_logistics_db_has_data", "false");
       return false;
     }
+    
+    localStorage.setItem("st_logistics_db_connected", "true");
+    
+    // Check if the database has any seeded users (i.e. not empty)
+    if (data && data.length > 0) {
+      localStorage.setItem("st_logistics_db_has_data", "true");
+    } else {
+      console.warn("⚠️ Database đã kết nối nhưng chưa có dữ liệu (chưa seed). Mặc định chạy Demo.");
+      localStorage.setItem("st_logistics_db_has_data", "false");
+    }
+    
     return true;
   } catch (err) {
     console.warn("⚠️ Lỗi kết nối database:", err.message || err);
+    localStorage.setItem("st_logistics_db_connected", "false");
+    localStorage.setItem("st_logistics_db_has_data", "false");
     return false;
   }
 };
@@ -43,10 +60,22 @@ export const checkDbConnection = async () => {
 export const isDatabaseEnabled = () => {
   const choice = localStorage.getItem("st_logistics_use_live_db");
   if (choice === "false") return false;
+  
+  const isConnected = localStorage.getItem("st_logistics_db_connected");
+  const hasData = localStorage.getItem("st_logistics_db_has_data");
+  
+  // Nếu database offline hoặc chưa cấu hình đúng, bắt buộc chạy Mock
+  if (isConnected === "false") return false;
+  
+  // Nếu người dùng chọn thủ công "Bật Supabase", ưu tiên cấu hình của người dùng
   if (choice === "true") return true;
   
-  // Mặc định: bật nếu có đầy đủ cấu hình URL & Key hợp lệ
-  return !!(SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('your-') && !SUPABASE_ANON_KEY.startsWith('sb_secret_'));
+  // Mặc định: bật nếu có đầy đủ cấu hình URL & Key hợp lệ VÀ đã seed dữ liệu
+  return !!(SUPABASE_URL && SUPABASE_ANON_KEY && 
+            !SUPABASE_ANON_KEY.includes('your-') && 
+            !SUPABASE_ANON_KEY.startsWith('sb_secret_') && 
+            isConnected === "true" && 
+            hasData === "true");
 };
 
 // Thay đổi cấu hình sử dụng DB
